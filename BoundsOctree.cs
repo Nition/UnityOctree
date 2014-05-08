@@ -14,7 +14,7 @@ using UnityEngine;
 //			A looseness value of 1.0 will make it a "normal" octree.
 // T:		The content of the octree can be anything, since the bounds data is supplied separately.
 
-// Originally written for the game Scraps (http://www.scrapsgame.com) but intended to be general-purpose.
+// Originally written for my game Scraps (http://www.scrapsgame.com) but intended to be general-purpose.
 // Copyright 2014 Bill Borman, GNU General Public Licence v3. http://www.gnu.org/copyleft/gpl.html
 // Unity-based, but could be adapted to work in pure C#
 

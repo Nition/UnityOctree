@@ -10,7 +10,7 @@
 //			Nodes have a constant - numObjectsAllowed - which sets the amount of items allowed in a node before it splits.
 // T:		The content of the octree can be anything, since the bounds data is supplied separately.
 
-// Originally written for the game Scraps (http://www.scrapsgame.com) but intended to be general-purpose.
+// Originally written for my game Scraps (http://www.scrapsgame.com) but intended to be general-purpose.
 // Copyright 2014 Bill Borman, GNU General Public Licence v3. http://www.gnu.org/copyleft/gpl.html
 // Unity-based, but could be adapted to work in pure C#
 public class PointOctree<T> where T : class {
