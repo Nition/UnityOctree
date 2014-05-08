@@ -311,7 +311,7 @@ public class BoundsOctreeNode<T> {
 		Vector3 size = new Vector3(adjLength, adjLength, adjLength);
 		bounds = new Bounds(Center, size);
 
-		float quarter = adjLength / looseness / 4f;
+		float quarter = BaseLength / 4f;
 		float childActualLength = (BaseLength / 2) * looseness;
 		Vector3 childActualSize = new Vector3(childActualLength, childActualLength, childActualLength);
 		childBounds = new Bounds[8];
@@ -381,7 +381,7 @@ public class BoundsOctreeNode<T> {
 	/// Splits the octree into eight children.
 	/// </summary>
 	void Split() {
-		float quarter = adjLength / looseness / 4f;
+		float quarter = BaseLength / 4f;
 		float newLength = BaseLength / 2;
 		children = new BoundsOctreeNode<T>[8];
 		children[0] = new BoundsOctreeNode<T>(newLength, minSize, looseness, Center + new Vector3(-quarter, quarter, -quarter));

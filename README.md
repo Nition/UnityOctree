@@ -27,6 +27,10 @@ Tree searches are recursive, so there is technically the potential for a stack o
 
 I tried switching to an iterative solution using my own stack, but creating and manipulating the stack made the results generally slower than the simple recursive solution. However, I wouldn't be surprised it someone smarter than me can come up with a faster solution.
 
+Another note: You may notice when viewing the bounds visualisation that the child nodes' outer edges are all inside the parent nodes. But loose octrees are meant to make the inner nodes bigger... aren't they? The answer is yes, but the parent nodes are *also* bigger, and e.g. (1.2 * 10) is bigger than (1.2 * 5), so the parent node ends up being bigger overall.
+
+This seems to be the standard way that loose octrees are done. I did an experiment: I tried making the child node dimensions looseness * the parent's actual size, instead of looseness * the parent's base size before looseness is applied. Performance seems to be about the same.
+
 Example Usage
 ===========
 
