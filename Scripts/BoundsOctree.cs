@@ -15,7 +15,7 @@ using UnityEngine;
 // T:		The content of the octree can be anything, since the bounds data is supplied separately.
 
 // Originally written for my game Scraps (http://www.scrapsgame.com) but intended to be general-purpose.
-// Copyright 2014 Bill Borman, GNU General Public Licence v3. http://www.gnu.org/copyleft/gpl.html
+// Copyright 2014 Bill Borman, BSD licence (see LICENCE file).
 // Unity-based, but could be adapted to work in pure C#
 
 // Note: For loops are often used here since in some cases (e.g. the IsColliding method)

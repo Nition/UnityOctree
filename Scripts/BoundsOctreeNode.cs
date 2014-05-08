@@ -2,7 +2,7 @@
 using UnityEngine;
 
 // A node in a BoundsOctree
-// Copyright 2014 Bill Borman, GNU General Public Licence v3. http://www.gnu.org/copyleft/gpl.html
+// Copyright 2014 Bill Borman, BSD licence (see LICENCE file).
 public class BoundsOctreeNode<T> {
 	// Centre of this node
 	public Vector3 Center { get; private set; }
