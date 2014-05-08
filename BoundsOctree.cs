@@ -3,7 +3,7 @@ using UnityEngine;
 
 // A Dynamic, Loose Octree for storing any objects that can be described with AABB bounds
 // See also: PointOctree, where objects are stored as single points and some code can be simplified
-// Octree:	An octree a tree data structure which divides 3D space into smaller partitions (nodes)
+// Octree:	An octree is a tree data structure which divides 3D space into smaller partitions (nodes)
 //			and places objects into the appropriate nodes. This allows fast access to objects
 //			in an area of interest without having to check every object.
 // Dynamic: The octree grows or shrinks as required when objects as added or removed
@@ -24,9 +24,10 @@ using UnityEngine;
 public class BoundsOctree<T> {
 	// The total amount of objects currently in the tree
 	public int Count { get; private set; }
+	
 	// Root node of the octree
 	BoundsOctreeNode<T> rootNode;
-	// Should be a value between 1 and 2.
+	// Should be a value between 1 and 2. A multiplier for the base size of a node.
 	// 1.0 is a "normal" octree, while values > 1 have overlap
 	readonly float looseness;
 	// Size that the octree was on creation
@@ -42,9 +43,9 @@ public class BoundsOctree<T> {
 	/// <summary>
 	/// Constructor for the bounds octree.
 	/// </summary>
-	/// <param name="initialWorldSize">Size of the sides of the initial node. The octree will never shrink smaller than this.</param>
+	/// <param name="initialWorldSize">Size of the sides of the initial node, in metres. The octree will never shrink smaller than this.</param>
 	/// <param name="initialWorldPos">Position of the centre of the initial node.</param>
-	/// <param name="minNodeSize">Nodes will stop splitting if the new nodes would be smaller than this.</param>
+	/// <param name="minNodeSize">Nodes will stop splitting if the new nodes would be smaller than this (metres).</param>
 	/// <param name="loosenessVal">Clamped between 1 and 2. Values > 1 let nodes overlap.</param>
 	public BoundsOctree(float initialWorldSize, Vector3 initialWorldPos, float minNodeSize, float loosenessVal) {
 		if (minNodeSize > initialWorldSize) {
@@ -82,7 +83,7 @@ public class BoundsOctree<T> {
 	/// Remove an object. Makes the assumption that the object only exists once in the tree.
 	/// </summary>
 	/// <param name="obj">Object to remove.</param>
-	/// <returns>True is the object was removed successfully.</returns>
+	/// <returns>True if the object was removed successfully.</returns>
 	public bool Remove(T obj) {
 		bool removed = rootNode.Remove(obj);
 
@@ -107,10 +108,8 @@ public class BoundsOctree<T> {
 		return rootNode.IsColliding(checkBounds);
 	}
 
-	// 
-	// If none, returns an empty list (not null)
 	/// <summary>
-	/// Returns an array of objects that intersect with the specified bounds, if any. See also: IsColliding.
+	/// Returns an array of objects that intersect with the specified bounds, if any. Otherwise returns an empty array. See also: IsColliding.
 	/// </summary>
 	/// <param name="checkBounds">Bounds to check.</param>
 	/// <returns>Objects that intersect with the specified bounds.</returns>

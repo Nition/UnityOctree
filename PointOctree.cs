@@ -2,7 +2,7 @@
 
 // A Dynamic Octree for storing any objects that can be described as a single point
 // See also: BoundsOctree, where objects are described by AABB bounds
-// Octree:	An octree a tree data structure which divides 3D space into smaller partitions (nodes)
+// Octree:	An octree is a tree data structure which divides 3D space into smaller partitions (nodes)
 //			and places objects into the appropriate nodes. This allows fast access to objects
 //			in an area of interest without having to check every object.
 // Dynamic: The octree grows or shrinks as required when objects as added or removed
@@ -15,8 +15,9 @@
 // Unity-based, but could be adapted to work in pure C#
 public class PointOctree<T> where T : class {
 	// The total amount of objects currently in the tree
-	public int Count { get; private set; }	
+	public int Count { get; private set; }
 	
+	// Root node of the octree
 	PointOctreeNode<T> rootNode;
 	// Size that the octree was on creation
 	readonly float initialSize;
@@ -42,7 +43,11 @@ public class PointOctree<T> where T : class {
 
 	// #### PUBLIC METHODS ####
 
-	// Add an object
+	/// <summary>
+	/// Add an object.
+	/// </summary>
+	/// <param name="obj">Object to add.</param>
+	/// <param name="objPos">Position of the object.</param>
 	public void Add(T obj, Vector3 objPos) {
 		// Add object or expand the octree until it can be added
 		int count = 0; // Safety check against infinite loop
@@ -56,13 +61,11 @@ public class PointOctree<T> where T : class {
 		Count++;
 	}
 
-	// Add an object, adjusted for a base position that isn't at zero
-	public void Add(T obj, Vector3 objPos, Vector3 posOffset, Quaternion rotOffset) {
-		objPos = GetAdjustedPoint(objPos, posOffset, rotOffset);
-		Add(obj, objPos);
-	}
-
-	// Removes the specified object. Assumes that the object only exists once in the tree
+	/// <summary>
+	/// Remove an object. Makes the assumption that the object only exists once in the tree.
+	/// </summary>
+	/// <param name="obj">Object to remove.</param>
+	/// <returns>True if the object was removed successfully.</returns>
 	public bool Remove(T obj) {
 		bool removed = rootNode.Remove(obj);
 
@@ -75,38 +78,38 @@ public class PointOctree<T> where T : class {
 		return removed;
 	}
 
-	// Return objects that are within maxDistance of the secified ray
-	public T[] GetNearby(Ray ray, float maxDistance, Vector3 posOffset, Quaternion rotOffset) {
-		ray.origin = GetAdjustedPoint(ray.origin, posOffset, rotOffset);
-		ray.direction = GetAdjustedDirection(ray.direction, rotOffset);
+	/// <summary>
+	/// Return objects that are within maxDistance of the secified ray.
+	/// </summary>
+	/// <param name="ray">The ray.</param>
+	/// <param name="maxDistance">Maximum distance from the ray to consider.</param>
+	/// <returns>Objects within range.</returns>
+	public T[] GetNearby(Ray ray, float maxDistance) {
 		return rootNode.GetNearby(ray, maxDistance);
 	}
 
-	// Intended for debugging. Must be called from OnGrawGizmos externally
-	// See also DrawAllObjects
+	/// <summary>
+	/// Draws node boundaries visually for debugging.
+	/// Must be called from OnGrawGizmos externally. See also: DrawAllObjects.
+	/// </summary>
 	public void DrawAllBounds() {
 		rootNode.DrawAllBounds();
 	}
 
-	// Intended for debugging. Must be called from OnGrawGizmos externally
-	// See also DrawAllBounds
+	/// <summary>
+	/// Draws the bounds of all objects in the tree visually for debugging.
+	/// Must be called from OnGrawGizmos externally. See also: DrawAllBounds.
+	/// </summary>
 	public void DrawAllObjects() {
 		rootNode.DrawAllObjects();
 	}
 
 	// #### PRIVATE METHODS ####
 
-	// Change point into a relative position using the given position and rotation offsets
-	static Vector3 GetAdjustedPoint(Vector3 point, Vector3 posOffset, Quaternion rotOffset) {
-		return Quaternion.Inverse(rotOffset) * (point - posOffset);
-	}
-
-	// Change direction into a relative angle using the given rotation offset
-	static Vector3 GetAdjustedDirection(Vector3 point, Quaternion rotOffset) {
-		return Quaternion.Inverse(rotOffset) * point;
-	}
-
-	// Grow the octree. Inputs specify the direction
+	/// <summary>
+	/// Grow the octree to fit in all objects.
+	/// </summary>
+	/// <param name="direction">Direction to grow.</param>
 	void Grow(Vector3 direction) {
 		int xDirection = direction.x >= 0 ? 1 : -1;
 		int yDirection = direction.y >= 0 ? 1 : -1;
@@ -138,10 +141,20 @@ public class PointOctree<T> where T : class {
 		rootNode.SetChildren(children);
 	}
 
+	/// <summary>
+	/// Shrink the octree if possible, else leave it the same.
+	/// </summary>
 	void Shrink() {
 		rootNode = rootNode.ShrinkIfPossible(initialSize);
 	}
 
+	/// <summary>
+	/// Used when growing the octree. Works out where the old root node would fit inside a new, larger root node.
+	/// </summary>
+	/// <param name="xDir">X direction of growth. 1 or -1.</param>
+	/// <param name="yDir">Y direction of growth. 1 or -1.</param>
+	/// <param name="zDir">Z direction of growth. 1 or -1.</param>
+	/// <returns>Octant where the root node should be.</returns>
 	static int GetRootPosIndex(int xDir, int yDir, int zDir) {
 		int result = xDir > 0 ? 1 : 0;
 		if (yDir < 0) result += 4;
