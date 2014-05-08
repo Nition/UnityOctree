@@ -99,7 +99,7 @@ public class BoundsOctree<T> {
 	/// <summary>
 	/// Check if the specified bounds intersect with anything in the tree. See also: GetColliding.
 	/// </summary>
-	/// <param name="checkBounds">Bounds to check.</param>
+	/// <param name="checkBounds">bounds to check.</param>
 	/// <returns>True if there was a collision.</returns>
 	public bool IsColliding(Bounds checkBounds) {
 		#if UNITY_EDITOR
@@ -111,7 +111,7 @@ public class BoundsOctree<T> {
 	/// <summary>
 	/// Returns an array of objects that intersect with the specified bounds, if any. Otherwise returns an empty array. See also: IsColliding.
 	/// </summary>
-	/// <param name="checkBounds">Bounds to check.</param>
+	/// <param name="checkBounds">bounds to check.</param>
 	/// <returns>Objects that intersect with the specified bounds.</returns>
 	public T[] GetColliding(Bounds checkBounds) {
 		#if UNITY_EDITOR
@@ -160,7 +160,7 @@ public class BoundsOctree<T> {
 	/// Used for visualising collision checks with DrawCollisionChecks.
 	/// Automatically removed from builds so that collision checks aren't slowed down.
 	/// </summary>
-	/// <param name="checkBounds">Bounds that were passed in to check for collisions.</param>
+	/// <param name="checkBounds">bounds that were passed in to check for collisions.</param>
 	#if UNITY_EDITOR
 	void AddCollisionCheck(Bounds checkBounds) {
 		lastCollisionChecks.Enqueue(checkBounds);

@@ -1,27 +1,23 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-// A node in a BoundsOctree
+// A node in a PointOctree
 // Copyright 2014 Bill Borman, GNU General Public Licence v3. http://www.gnu.org/copyleft/gpl.html
-public class BoundsOctreeNode<T> {
-    // Centre of this node
+public class PointOctreeNode<T> where T : class {
+	// Centre of this node
 	public Vector3 Center { get; private set; }
-	// Length of this node if it has a looseness of 1.0
-	public float BaseLength { get; private set; }
+	// Length of the sides of this node
+	public float SideLength { get; private set; }
 
-	// Looseness value for this node
-	float looseness;
 	// Minimum size for a node in this octree
 	float minSize;
-	// Actual length of sides, taking the looseness value into account
-	float adjLength;
     // Bounding box that represents this node
     Bounds bounds = default(Bounds);
     // Objects in this node
 	readonly List<OctreeObject> objects = new List<OctreeObject>();
 	// Child nodes, if any
-    BoundsOctreeNode<T>[] children = null;
-	// Bounds of potential children to this node. These are actual size (with looseness taken into account), not base size
+	PointOctreeNode<T>[] children = null;
+	// bounds of potential children to this node. These are actual size (with looseness taken into account), not base size
 	Bounds[] childBounds;
 	// If there are already numObjectsAllowed in a node, we split it into children
 	// A generally good number seems to be something around 8-15
@@ -30,7 +26,7 @@ public class BoundsOctreeNode<T> {
 	// An object in the octree
 	class OctreeObject {
 		public T Obj;
-		public Bounds Bounds;
+		public Vector3 Pos;
 	}
 
 	/// <summary>
@@ -38,10 +34,9 @@ public class BoundsOctreeNode<T> {
 	/// </summary>
 	/// <param name="baseLengthVal">Length of this node, not taking looseness into account.</param>
 	/// <param name="minSizeVal">Minimum size of nodes in this octree.</param>
-	/// <param name="loosenessVal">Multiplier for baseLengthVal to get the actual size.</param>
 	/// <param name="centerVal">Centre position of this node.</param>
-	public BoundsOctreeNode(float baseLengthVal, float minSizeVal, float loosenessVal, Vector3 centerVal) {
-		SetValues(baseLengthVal, minSizeVal, loosenessVal, centerVal);
+	public PointOctreeNode(float baseLengthVal, float minSizeVal, Vector3 centerVal) {
+		SetValues(baseLengthVal, minSizeVal, centerVal);
 	}
 
 	// #### PUBLIC METHODS ####
@@ -50,13 +45,13 @@ public class BoundsOctreeNode<T> {
 	/// Add an object.
 	/// </summary>
 	/// <param name="obj">Object to add.</param>
-	/// <param name="objBounds">3D bounding box around the object.</param>
-	/// <returns>True if the object fits entirely within this node.</returns>
-	public bool Add(T obj, Bounds objBounds) {
-		if (!Encapsulates(bounds, objBounds)) {
+	/// <param name="objPos">Position of the object.</param>
+	/// <returns></returns>
+	public bool Add(T obj, Vector3 objPos) {
+		if (!Encapsulates(bounds, objPos)) {
 			return false;
 		}
-		SubAdd(obj, objBounds);
+		SubAdd(obj, objPos);
 		return true;
 	}
 
@@ -93,52 +88,22 @@ public class BoundsOctreeNode<T> {
     }
 
 	/// <summary>
-	/// Check if the specified bounds intersect with anything in the tree. See also: GetColliding.
+	/// Return objects that are within maxDistance of the secified ray.
 	/// </summary>
-	/// <param name="checkBounds">Bounds to check.</param>
-	/// <returns>True if there was a collision.</returns>
-	public bool IsColliding(Bounds checkBounds) {
-		// Are the input bounds at least partially in this node?
-		if (!bounds.Intersects(checkBounds)) {
-			return false;
+	/// <param name="ray">The ray.</param>
+	/// <param name="maxDistance">Maximum distance from the ray to consider.</param>
+	/// <returns>Objects within range.</returns>
+	public T[] GetNearby(Ray ray, float maxDistance) {
+		// Does the ray hit this node at all?
+		if (!bounds.IntersectRay(ray)) {
+			return null;
 		}
 
-		//Debug.Log("Checking node at depth " + depth + " containing " + objects.Count + " object(s) and " + 8 + " children.");
-		
-		// Check against any objects in this node
-		for(int i = 0; i < objects.Count; i++) {
-			if (objects[i].Bounds.Intersects(checkBounds)) {
-				return true;
-			}
-		}
-		
-		// Check children
-		if (children != null) {
-			for(int i = 0; i < 8; i++) {
-				if (children[i].IsColliding(checkBounds)) {
-					return true;
-				}
-			}
-		}
-
-		return false;
-	}
-
-	/// <summary>
-	/// Returns an array of objects that intersect with the specified bounds, if any. Otherwise returns an empty array. See also: IsColliding.
-	/// </summary>
-	/// <param name="checkBounds">Bounds to check.</param>
-	/// <returns>Objects that intersect with the specified bounds.</returns>
-	public T[] GetColliding(Bounds checkBounds) {
 		List<T> collidingWith = new List<T>();
-		// Are the input bounds at least partially in this node?
-		if (!bounds.Intersects(checkBounds)) {
-			return collidingWith.ToArray();
-		}
 
 		// Check against any objects in this node
 		for (int i = 0; i < objects.Count; i++) {
-			if (objects[i].Bounds.Intersects(checkBounds)) {
+			if (DistanceToRay(ray, objects[i].Pos) <= maxDistance) {
 				collidingWith.Add(objects[i].Obj);
 			}
 		}
@@ -146,10 +111,12 @@ public class BoundsOctreeNode<T> {
 		// Check children
 		if (children != null) {
 			for (int i = 0; i < 8; i++) {
-				T[] childColliding = children[i].GetColliding(checkBounds);
+				T[] childColliding = children[i].GetNearby(ray, maxDistance);
 				if (childColliding != null) collidingWith.AddRange(childColliding);
 			}
 		}
+
+
 		return collidingWith.ToArray();
 	}
 
@@ -157,7 +124,7 @@ public class BoundsOctreeNode<T> {
 	/// Set the 8 children of this octree.
 	/// </summary>
 	/// <param name="childOctrees">The 8 new child nodes.</param>
-	public void SetChildren(BoundsOctreeNode<T>[] childOctrees) {
+	public void SetChildren(PointOctreeNode<T>[] childOctrees) {
 		if (childOctrees.Length != 8) {
 			Debug.LogError("Child octree array must be length 8. Was length: " + childOctrees.Length);
 			return;
@@ -174,8 +141,8 @@ public class BoundsOctreeNode<T> {
 	public void DrawAllBounds(float depth = 0) {
 		float tintVal = depth / 7; // Will eventually get values > 1. Color rounds to 1 automatically
 		Gizmos.color = new Color(tintVal, 0, 1.0f - tintVal);
-		
-		Bounds thisBounds = new Bounds(Center, new Vector3(adjLength, adjLength, adjLength));
+
+		Bounds thisBounds = new Bounds(Center, new Vector3(SideLength, SideLength, SideLength));
 		Gizmos.DrawWireCube(thisBounds.center, thisBounds.size);
 
 		if (children != null) {
@@ -190,13 +157,14 @@ public class BoundsOctreeNode<T> {
 	/// <summary>
 	/// Draws the bounds of all objects in the tree visually for debugging.
 	/// Must be called from OnGrawGizmos externally. See also: DrawAllBounds.
+	/// NOTE: marker.tif must be placed in your Unity /Assets/Gizmos subfolder for this to work.
 	/// </summary>
 	public void DrawAllObjects() {
-		float tintVal = BaseLength / 20;
+		float tintVal = SideLength / 20;
 		Gizmos.color = new Color(0, 1.0f - tintVal, tintVal, 0.25f);
 
 		foreach (OctreeObject obj in objects) {
-			Gizmos.DrawCube(obj.Bounds.center, obj.Bounds.size);
+			Gizmos.DrawIcon(obj.Pos, "marker.tif", true);
 		}
 
 		if (children != null) {
@@ -217,8 +185,8 @@ public class BoundsOctreeNode<T> {
 	/// </summary>
 	/// <param name="minLength">Minimum dimensions of a node in this octree.</param>
 	/// <returns>The new root, or the existing one if we didn't shrink.</returns>
-	public BoundsOctreeNode<T> ShrinkIfPossible(float minLength) {
-		if (BaseLength < (2 * minLength)) {
+	public PointOctreeNode<T> ShrinkIfPossible(float minLength) {
+		if (SideLength < (2 * minLength)) {
 			return this;
 		}
 		if (objects.Count == 0 && children.Length == 0) {
@@ -229,17 +197,10 @@ public class BoundsOctreeNode<T> {
 		int bestFit = -1;
 		for (int i = 0; i < objects.Count; i++) {
 			OctreeObject curObj = objects[i];
-			int newBestFit = BestFitChild(curObj.Bounds);
+			int newBestFit = BestFitChild(curObj.Pos);
 			if (i == 0 || newBestFit == bestFit) {
-				// In same octant as the other(s). Does it fit completely inside that octant?
-				if (Encapsulates(childBounds[newBestFit], curObj.Bounds)) {
-					if (bestFit < 0) {
-						bestFit = newBestFit;
-					}
-				}
-				else {
-					// Nope, so we can't reduce. Otherwise we continue
-					return this;
+				if (bestFit < 0) {
+					bestFit = newBestFit;
 				}
 			}
 			else {
@@ -268,7 +229,7 @@ public class BoundsOctreeNode<T> {
 		if (children == null) {
 			// We don't have any children, so just shrink this node to the new size
 			// We already know that everything will still fit in it
-			SetValues(BaseLength / 2, minSize, looseness, childBounds[bestFit].center);
+			SetValues(SideLength / 2, minSize, childBounds[bestFit].center);
 			return this;
 		}
 
@@ -300,21 +261,18 @@ public class BoundsOctreeNode<T> {
 	/// </summary>
 	/// <param name="baseLengthVal">Length of this node, not taking looseness into account.</param>
 	/// <param name="minSizeVal">Minimum size of nodes in this octree.</param>
-	/// <param name="loosenessVal">Multiplier for baseLengthVal to get the actual size.</param>
 	/// <param name="centerVal">Centre position of this node.</param>
-	void SetValues(float baseLengthVal, float minSizeVal, float loosenessVal, Vector3 centerVal) {
-		BaseLength = baseLengthVal;
+	void SetValues(float baseLengthVal, float minSizeVal, Vector3 centerVal) {
+		SideLength = baseLengthVal;
 		minSize = minSizeVal;
-		looseness = loosenessVal;
         Center = centerVal;
-		adjLength = looseness * baseLengthVal;
 
         // Create the bounding box.
-		Vector3 size = new Vector3(adjLength, adjLength, adjLength);
+		Vector3 size = new Vector3(SideLength, SideLength, SideLength);
         bounds = new Bounds(Center, size);
 
-		float quarter = adjLength / looseness / 4f;
-	    float childActualLength = (BaseLength / 2) * looseness;
+		float quarter = SideLength / 4f;
+	    float childActualLength = SideLength / 2;
 		Vector3 childActualSize = new Vector3(childActualLength, childActualLength, childActualLength);
 		childBounds = new Bounds[8];
 		childBounds[0] = new Bounds(Center + new Vector3(-quarter, quarter, -quarter), childActualSize);
@@ -331,18 +289,16 @@ public class BoundsOctreeNode<T> {
 	/// Private counterpart to the public Add method.
 	/// </summary>
 	/// <param name="obj">Object to add.</param>
-	/// <param name="objBounds">3D bounding box around the object.</param>
-	void SubAdd(T obj, Bounds objBounds) {
+	/// <param name="objPos">Position of the object.</param>
+	void SubAdd(T obj, Vector3 objPos) {
 		// We know it fits at this level if we've got this far
 		// Just add if few objects are here, or children would be below min size
-		if (objects.Count < numObjectsAllowed || (BaseLength / 2) < minSize) {
-			OctreeObject newObj = new OctreeObject {Obj = obj, Bounds = objBounds};
+		if (objects.Count < numObjectsAllowed || (SideLength / 2) < minSize) {
+			OctreeObject newObj = new OctreeObject { Obj = obj, Pos = objPos };
 			//Debug.Log("ADD " + obj.name + " to depth " + depth);
 			objects.Add(newObj);
 		}
-		else {
-			// Fits at this level, but we can go deeper. Would it fit there?
-
+		else { // Enough objects in this node already: Create new children
 			// Create the 8 children
 			int bestFitChild;
 			if (children == null) {
@@ -357,25 +313,15 @@ public class BoundsOctreeNode<T> {
 					OctreeObject existingObj = objects[i];
 					// Find which child the object is closest to based on where the
 					// object's center is located in relation to the octree's center.
-					bestFitChild = BestFitChild(existingObj.Bounds);
-					// Does it fit?
-					if (Encapsulates(children[bestFitChild].bounds, existingObj.Bounds)) {
-						children[bestFitChild].SubAdd(existingObj.Obj, existingObj.Bounds); // Go a level deeper					
-						objects.Remove(existingObj); // Remove from here
-					}
+					bestFitChild = BestFitChild(existingObj.Pos);
+					children[bestFitChild].SubAdd(existingObj.Obj, existingObj.Pos); // Go a level deeper					
+					objects.Remove(existingObj); // Remove from here
 				}
 			}
 
 			// Now handle the new object we're adding now
-			bestFitChild = BestFitChild(objBounds);
-			if (Encapsulates(children[bestFitChild].bounds, objBounds)) {
-				children[bestFitChild].SubAdd(obj, objBounds);
-			}
-			else {
-				OctreeObject newObj = new OctreeObject { Obj = obj, Bounds = objBounds };
-				//Debug.Log("ADD " + obj.name + " to depth " + depth);
-				objects.Add(newObj);
-			}
+			bestFitChild = BestFitChild(objPos);
+			children[bestFitChild].SubAdd(obj, objPos);
 		}
 	}
 
@@ -383,17 +329,17 @@ public class BoundsOctreeNode<T> {
 	/// Splits the octree into eight children.
 	/// </summary>
     void Split() {
-		float quarter = adjLength / looseness / 4f;
-	    float newLength = BaseLength / 2;
-		children = new BoundsOctreeNode<T>[8];
-		children[0] = new BoundsOctreeNode<T>(newLength, minSize, looseness, Center + new Vector3(-quarter, quarter, -quarter));
-		children[1] = new BoundsOctreeNode<T>(newLength, minSize, looseness, Center + new Vector3(quarter, quarter, -quarter));
-		children[2] = new BoundsOctreeNode<T>(newLength, minSize, looseness, Center + new Vector3(-quarter, quarter, quarter));
-		children[3] = new BoundsOctreeNode<T>(newLength, minSize, looseness, Center + new Vector3(quarter, quarter, quarter));
-		children[4] = new BoundsOctreeNode<T>(newLength, minSize, looseness, Center + new Vector3(-quarter, -quarter, -quarter));
-		children[5] = new BoundsOctreeNode<T>(newLength, minSize, looseness, Center + new Vector3(quarter, -quarter, -quarter));
-		children[6] = new BoundsOctreeNode<T>(newLength, minSize, looseness, Center + new Vector3(-quarter, -quarter, quarter));
-		children[7] = new BoundsOctreeNode<T>(newLength, minSize, looseness, Center + new Vector3(quarter, -quarter, quarter));
+		float quarter = SideLength / 4f;
+	    float newLength = SideLength / 2;
+		children = new PointOctreeNode<T>[8];
+		children[0] = new PointOctreeNode<T>(newLength, minSize, Center + new Vector3(-quarter, quarter, -quarter));
+		children[1] = new PointOctreeNode<T>(newLength, minSize, Center + new Vector3(quarter, quarter, -quarter));
+		children[2] = new PointOctreeNode<T>(newLength, minSize, Center + new Vector3(-quarter, quarter, quarter));
+		children[3] = new PointOctreeNode<T>(newLength, minSize, Center + new Vector3(quarter, quarter, quarter));
+		children[4] = new PointOctreeNode<T>(newLength, minSize, Center + new Vector3(-quarter, -quarter, -quarter));
+		children[5] = new PointOctreeNode<T>(newLength, minSize, Center + new Vector3(quarter, -quarter, -quarter));
+		children[6] = new PointOctreeNode<T>(newLength, minSize, Center + new Vector3(-quarter, -quarter, quarter));
+		children[7] = new PointOctreeNode<T>(newLength, minSize, Center + new Vector3(quarter, -quarter, quarter));
     }
 
 	/// <summary>
@@ -404,7 +350,7 @@ public class BoundsOctreeNode<T> {
 	void Merge() {
 		// Note: We know children != null or we wouldn't be merging
 		for (int i = 0; i < 8; i++) {
-			BoundsOctreeNode<T> curChild = children[i];
+			PointOctreeNode<T> curChild = children[i];
 			int numObjects = curChild.objects.Count;
 			for (int j = numObjects - 1; j >= 0; j--) {
 				OctreeObject curObj = curChild.objects[j];
@@ -416,22 +362,22 @@ public class BoundsOctreeNode<T> {
 	}
 
 	/// <summary>
-	/// Checks if outerBounds encapsulates innerBounds.
+	/// Checks if outerBounds encapsulates the given point.
 	/// </summary>
 	/// <param name="outerBounds">Outer bounds.</param>
-	/// <param name="innerBounds">Inner bounds.</param>
+	/// <param name="point">Point.</param>
 	/// <returns>True if innerBounds is fully encapsulated by outerBounds.</returns>
-	static bool Encapsulates(Bounds outerBounds, Bounds innerBounds) {
-		return outerBounds.Contains(innerBounds.min) && outerBounds.Contains(innerBounds.max);
+	static bool Encapsulates(Bounds outerBounds, Vector3 point) {
+		return outerBounds.Contains(point);
 	}
 
 	/// <summary>
 	/// Find which child node this object would be most likely to fit in.
 	/// </summary>
-	/// <param name="objBounds">The object's bounds.</param>
+	/// <param name="objPos">The object's position.</param>
 	/// <returns>One of the eight child octants.</returns>
-	int BestFitChild(Bounds objBounds) {
-		return (objBounds.center.x <= Center.x ? 0 : 1) + (objBounds.center.y >= Center.y ? 0 : 4) + (objBounds.center.z <= Center.z ? 0 : 2);
+	int BestFitChild(Vector3 objPos) {
+		return (objPos.x <= Center.x ? 0 : 1) + (objPos.y >= Center.y ? 0 : 4) + (objPos.z <= Center.z ? 0 : 2);
 	}
 
 	/// <summary>
@@ -441,7 +387,7 @@ public class BoundsOctreeNode<T> {
 	bool ShouldMerge() {
 		int totalObjects = objects.Count;
 		if (children != null) {
-			foreach(BoundsOctreeNode<T> child in children) {
+			foreach(PointOctreeNode<T> child in children) {
 				if (child.children != null) {
 					// If any of the *children* have children, there are definitely too many to merge,
 					// or the child woudl have been merged already
@@ -453,10 +399,7 @@ public class BoundsOctreeNode<T> {
 		return totalObjects <= numObjectsAllowed;
 	}
 
-	/// <summary>
-	/// Checks if this node or anything below it has something in it.
-	/// </summary>
-	/// <returns>True if this node or any of its children, grandchildren etc have something in them</returns>
+	// Returns true if this node or any of its children, grandchildren etc have something in them
 	bool HasAnyObjects() {
 		if (objects.Count > 0) return true;
 
@@ -467,5 +410,17 @@ public class BoundsOctreeNode<T> {
 		}
 
 		return false;
+	}
+
+	// R
+
+	/// <summary>
+	/// eturns the closest distance to the given ray from a point.
+	/// </summary>
+	/// <param name="ray">The ray.</param>
+	/// <param name="point">The point to check distance from the ray.</param>
+	/// <returns>Distance from the point to the closest point of the ray.</returns>
+	public static float DistanceToRay(Ray ray, Vector3 point) {
+		return Vector3.Cross(ray.direction, point - ray.origin).magnitude;
 	}
 }
