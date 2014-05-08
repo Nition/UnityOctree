@@ -10,7 +10,7 @@ There are two octree implementations here:
 
 **Octree:** An octree a tree data structure which divides 3D space into smaller partitions (nodes) and places objects into the appropriate nodes. This allows fast access to objects in an area of interest without having to check every object.
 
-**Dynamic:** The octree grows or shrinks as required when objects as added or removed. It also splits and merges nodes as appropriate. There is no maximum depth. Nodes have a constant - numObjectsAllowed - which sets the amount of items allowed in a node before it splits.
+**Dynamic:** The octree grows or shrinks as required when objects are added or removed. It also splits and merges nodes as appropriate. There is no maximum depth. Nodes have a constant (*numObjectsAllowed*) which sets the amount of items allowed in a node before it splits.
 
 **Loose:** The octree's nodes can be larger than 1/2 their parent's length and width, so they overlap to some extent. This can alleviate the problem of even tiny objects ending up in large nodes if they're near boundaries. A looseness value of 1.0 will make it a "normal" octree.
 
@@ -19,13 +19,13 @@ There are two octree implementations here:
 With BoundsOctree, you can pass in bounds and get a true/false answer for if it's colliding with anything (IsColliding), or get a list of everything it's collising with (GetColliding).
 With PointOctree, you can cast a ray and get a list of objects that are within x distance of that ray (GetNearby).
 
-It shouldn't be too hard to implement additional functions if needed.
+It shouldn't be too hard to implement additional functions if needed. For instance, PointOctree could check for points that fall inside a given bounds.
 
 **Considerations:**
 
-Tree searches are recursive, so there is the potential for a stack overflow on very large trees. The minNodeSize parameter limits node side and hence the depth of the tree, putting a cap on recursion. In real use it shouldn't be an issue.
+Tree searches are recursive, so there is technically the potential for a stack overflow on very large trees. The minNodeSize parameter limits node side and hence the depth of the tree, putting a cap on recursion.
 
-I tried switching to an iterative solution using my own stack, but creating and pushing to the stack made the results generally slower than the simple recursive solution. I wouldn't be surprised it someone smarter than me can come up with a faster solution though.
+I tried switching to an iterative solution using my own stack, but creating and manipulating the stack made the results generally slower than the simple recursive solution. However, I wouldn't be surprised it someone smarter than me can come up with a faster solution.
 
 Example Usage
 ===========
