@@ -54,11 +54,25 @@ boundsTree.Remove(myObject);
 pointTree.Add(myObject, myVector3);
 boundsTree.Remove(myObject);
 ```
-
 - The object's type depends on the tree's type.
 - The bounds or point determine where it's inserted.
 
+**Built-in Functions**
 
+```C#
+bool result = boundsTree.IsColliding(bounds);
+```
+
+```C#
+GameObject[] result2 = boundsTree.GetColliding(bounds);
+```
+- Where GameObject is the type of the octree
+
+```C#
+pointTree.GetNearby(myRay, 4);
+```
+- Where myRay is a [Ray](http://docs.unity3d.com/Documentation/ScriptReference/Ray.html)
+- In this case we're looking for any point within 4m of the closest point on the ray
 
 **Debugging Visuals**
 
@@ -66,13 +80,16 @@ boundsTree.Remove(myObject);
 
 ```C#
 void OnDrawGizmos() {
-	boundsTree.DrawAllBounds();
-	boundsTree.DrawAllObjects();
+	boundsTree.DrawAllBounds(); // Draw node boundaries
+	boundsTree.DrawAllObjects(); // Draw object boundaries
+	boundsTree.DrawCollisionChecks(); // Draw the last *numCollisionsToSave* collision check boundaries
 
-	pointTree.DrawAllBounds();
-	pointTree.DrawAllObjects();
+	pointTree.DrawAllBounds(); // Draw node boundaries
+	pointTree.DrawAllObjects(); // Mark object positions
 }
 ```
-
 - Must be in Unity's OnDrawGizmos() method in a class that inherits from MonoBehaviour
 - Point octrees need the marker.tif file to be in your Unity /Assets/Gizmos subfolder for DrawAllObjects to work
+
+
+

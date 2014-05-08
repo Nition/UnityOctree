@@ -412,10 +412,8 @@ public class PointOctreeNode<T> where T : class {
 		return false;
 	}
 
-	// R
-
 	/// <summary>
-	/// eturns the closest distance to the given ray from a point.
+	/// Returns the closest distance to the given ray from a point.
 	/// </summary>
 	/// <param name="ray">The ray.</param>
 	/// <param name="point">The point to check distance from the ray.</param>

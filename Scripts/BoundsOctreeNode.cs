@@ -103,8 +103,6 @@ public class BoundsOctreeNode<T> {
 			return false;
 		}
 
-		//Debug.Log("Checking node at depth " + depth + " containing " + objects.Count + " object(s) and " + 8 + " children.");
-
 		// Check against any objects in this node
 		for (int i = 0; i < objects.Count; i++) {
 			if (objects[i].Bounds.Intersects(checkBounds)) {

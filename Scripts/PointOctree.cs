@@ -50,7 +50,7 @@ public class PointOctree<T> where T : class {
 	/// <param name="objPos">Position of the object.</param>
 	public void Add(T obj, Vector3 objPos) {
 		// Add object or expand the octree until it can be added
-		int count = 0; // Safety check against infinite loop
+		int count = 0; // Safety check against infinite/excessive growth
 		while (!rootNode.Add(obj, objPos)) {
 			Grow(objPos - rootNode.Center);
 			if (++count > 20) {

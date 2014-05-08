@@ -68,7 +68,7 @@ public class BoundsOctree<T> {
 	/// <param name="objBounds">3D bounding box around the object.</param>
 	public void Add(T obj, Bounds objBounds) {
 		// Add object or expand the octree until it can be added
-		int count = 0; // Safety check against infinite loop
+		int count = 0; // Safety check against infinite/excessive growth
 		while (!rootNode.Add(obj, objBounds)) {
 			Grow(objBounds.center - rootNode.Center);
 			if (++count > 20) {
