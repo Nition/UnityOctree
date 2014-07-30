@@ -2,7 +2,7 @@
 using UnityEngine;
 
 // A node in a PointOctree
-// Copyright 2014 Bill Borman, BSD licence (see LICENCE file).
+// Copyright 2014 Nition, BSD licence (see LICENCE file). http://nition.co
 public class PointOctreeNode<T> where T : class {
 	// Centre of this node
 	public Vector3 Center { get; private set; }
