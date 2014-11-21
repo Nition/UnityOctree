@@ -166,7 +166,7 @@ public class BoundsOctreeNode<T> {
 
 	/// <summary>
 	/// Draws node boundaries visually for debugging.
-	/// Must be called from OnGrawGizmos externally. See also: DrawAllObjects.
+	/// Must be called from OnDrawGizmos externally. See also: DrawAllObjects.
 	/// </summary>
 	/// <param name="depth">Used for recurcive calls to this method.</param>
 	public void DrawAllBounds(float depth = 0) {
@@ -187,7 +187,7 @@ public class BoundsOctreeNode<T> {
 
 	/// <summary>
 	/// Draws the bounds of all objects in the tree visually for debugging.
-	/// Must be called from OnGrawGizmos externally. See also: DrawAllBounds.
+	/// Must be called from OnDrawGizmos externally. See also: DrawAllBounds.
 	/// </summary>
 	public void DrawAllObjects() {
 		float tintVal = BaseLength / 20;
