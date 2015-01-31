@@ -21,7 +21,9 @@ public class PointOctreeNode<T> where T : class {
 	Bounds[] childBounds;
 	// If there are already numObjectsAllowed in a node, we split it into children
 	// A generally good number seems to be something around 8-15
-	const int numObjectsAllowed = 8;
+	const int NUM_OBJECTS_ALLOWED = 8;
+	// For reverting the bounds size after temporary changes
+	Vector3 actualBoundsSize;
 
 	// An object in the octree
 	class OctreeObject {
@@ -95,8 +97,13 @@ public class PointOctreeNode<T> where T : class {
 	/// <returns>Objects within range.</returns>
 	public T[] GetNearby(Ray ray, float maxDistance) {
 		// Does the ray hit this node at all?
-		if (!bounds.IntersectRay(ray)) {
-			return null;
+		// Note: Expanding the bounds is not exactly the same as a real distance check, but it's fast.
+		// TODO: Does someone have a fast AND accurate formula to do this check?
+		bounds.Expand(new Vector3(maxDistance, maxDistance, maxDistance));
+		bool intersected = bounds.IntersectRay(ray);
+		bounds.size = actualBoundsSize;
+		if (!intersected) {
+			return new T[] {};
 		}
 
 		List<T> collidingWith = new List<T>();
@@ -268,7 +275,7 @@ public class PointOctreeNode<T> where T : class {
         Center = centerVal;
 
         // Create the bounding box.
-		Vector3 size = new Vector3(SideLength, SideLength, SideLength);
+		actualBoundsSize = new Vector3(SideLength, SideLength, SideLength);
         bounds = new Bounds(Center, size);
 
 		float quarter = SideLength / 4f;
@@ -293,7 +300,7 @@ public class PointOctreeNode<T> where T : class {
 	void SubAdd(T obj, Vector3 objPos) {
 		// We know it fits at this level if we've got this far
 		// Just add if few objects are here, or children would be below min size
-		if (objects.Count < numObjectsAllowed || (SideLength / 2) < minSize) {
+		if (objects.Count < NUM_OBJECTS_ALLOWED || (SideLength / 2) < minSize) {
 			OctreeObject newObj = new OctreeObject { Obj = obj, Pos = objPos };
 			//Debug.Log("ADD " + obj.name + " to depth " + depth);
 			objects.Add(newObj);
