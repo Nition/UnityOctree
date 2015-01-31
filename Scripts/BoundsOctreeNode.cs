@@ -2,7 +2,7 @@
 using UnityEngine;
 
 // A node in a BoundsOctree
-// Copyright 2014 Bill Borman, BSD licence (see LICENCE file).
+// Copyright 2014 Nition, BSD licence (see LICENCE file). http://nition.co
 public class BoundsOctreeNode<T> {
 	// Centre of this node
 	public Vector3 Center { get; private set; }
@@ -166,7 +166,7 @@ public class BoundsOctreeNode<T> {
 
 	/// <summary>
 	/// Draws node boundaries visually for debugging.
-	/// Must be called from OnGrawGizmos externally. See also: DrawAllObjects.
+	/// Must be called from OnDrawGizmos externally. See also: DrawAllObjects.
 	/// </summary>
 	/// <param name="depth">Used for recurcive calls to this method.</param>
 	public void DrawAllBounds(float depth = 0) {
@@ -187,7 +187,7 @@ public class BoundsOctreeNode<T> {
 
 	/// <summary>
 	/// Draws the bounds of all objects in the tree visually for debugging.
-	/// Must be called from OnGrawGizmos externally. See also: DrawAllBounds.
+	/// Must be called from OnDrawGizmos externally. See also: DrawAllBounds.
 	/// </summary>
 	public void DrawAllObjects() {
 		float tintVal = BaseLength / 20;

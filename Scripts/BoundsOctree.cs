@@ -15,7 +15,7 @@ using UnityEngine;
 // T:		The content of the octree can be anything, since the bounds data is supplied separately.
 
 // Originally written for my game Scraps (http://www.scrapsgame.com) but intended to be general-purpose.
-// Copyright 2014 Bill Borman, BSD licence (see LICENCE file).
+// Copyright 2014 Nition, BSD licence (see LICENCE file). http://nition.co
 // Unity-based, but could be adapted to work in pure C#
 
 // Note: For loops are often used here since in some cases (e.g. the IsColliding method)
@@ -122,7 +122,7 @@ public class BoundsOctree<T> {
 
 	/// <summary>
 	/// Draws node boundaries visually for debugging.
-	/// Must be called from OnGrawGizmos externally. See also: DrawAllObjects.
+	/// Must be called from OnDrawGizmos externally. See also: DrawAllObjects.
 	/// </summary>
 	public void DrawAllBounds() {
 		rootNode.DrawAllBounds();
@@ -130,13 +130,13 @@ public class BoundsOctree<T> {
 
 	/// <summary>
 	/// Draws the bounds of all objects in the tree visually for debugging.
-	/// Must be called from OnGrawGizmos externally. See also: DrawAllBounds.
+	/// Must be called from OnDrawGizmos externally. See also: DrawAllBounds.
 	/// </summary>
 	public void DrawAllObjects() {
 		rootNode.DrawAllObjects();
 	}
 
-	// Intended for debugging. Must be called from OnGrawGizmos externally
+	// Intended for debugging. Must be called from OnDrawGizmos externally
 	// See also DrawAllBounds and DrawAllObjects
 	/// <summary>
 	/// Visualises collision checks from IsColliding and GetColliding.

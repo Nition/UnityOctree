@@ -2,7 +2,7 @@
 using UnityEngine;
 
 // A node in a PointOctree
-// Copyright 2014 Bill Borman, BSD licence (see LICENCE file).
+// Copyright 2014 Nition, BSD licence (see LICENCE file). http://nition.co
 public class PointOctreeNode<T> where T : class {
 	// Centre of this node
 	public Vector3 Center { get; private set; }
@@ -90,7 +90,7 @@ public class PointOctreeNode<T> where T : class {
     }
 
 	/// <summary>
-	/// Return objects that are within maxDistance of the secified ray.
+	/// Return objects that are within maxDistance of the specified ray.
 	/// </summary>
 	/// <param name="ray">The ray.</param>
 	/// <param name="maxDistance">Maximum distance from the ray to consider.</param>
@@ -142,7 +142,7 @@ public class PointOctreeNode<T> where T : class {
 
 	/// <summary>
 	/// Draws node boundaries visually for debugging.
-	/// Must be called from OnGrawGizmos externally. See also: DrawAllObjects.
+	/// Must be called from OnDrawGizmos externally. See also: DrawAllObjects.
 	/// </summary>
 	/// <param name="depth">Used for recurcive calls to this method.</param>
 	public void DrawAllBounds(float depth = 0) {
@@ -163,7 +163,7 @@ public class PointOctreeNode<T> where T : class {
 
 	/// <summary>
 	/// Draws the bounds of all objects in the tree visually for debugging.
-	/// Must be called from OnGrawGizmos externally. See also: DrawAllBounds.
+	/// Must be called from OnDrawGizmos externally. See also: DrawAllBounds.
 	/// NOTE: marker.tif must be placed in your Unity /Assets/Gizmos subfolder for this to work.
 	/// </summary>
 	public void DrawAllObjects() {

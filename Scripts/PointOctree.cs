@@ -11,7 +11,7 @@
 // T:		The content of the octree can be anything, since the bounds data is supplied separately.
 
 // Originally written for my game Scraps (http://www.scrapsgame.com) but intended to be general-purpose.
-// Copyright 2014 Bill Borman, BSD licence (see LICENCE file).
+// Copyright 2014 Nition, BSD licence (see LICENCE file). http://nition.co
 // Unity-based, but could be adapted to work in pure C#
 public class PointOctree<T> where T : class {
 	// The total amount of objects currently in the tree
@@ -79,7 +79,7 @@ public class PointOctree<T> where T : class {
 	}
 
 	/// <summary>
-	/// Return objects that are within maxDistance of the secified ray.
+	/// Return objects that are within maxDistance of the specified ray.
 	/// </summary>
 	/// <param name="ray">The ray.</param>
 	/// <param name="maxDistance">Maximum distance from the ray to consider.</param>
@@ -90,7 +90,7 @@ public class PointOctree<T> where T : class {
 
 	/// <summary>
 	/// Draws node boundaries visually for debugging.
-	/// Must be called from OnGrawGizmos externally. See also: DrawAllObjects.
+	/// Must be called from OnDrawGizmos externally. See also: DrawAllObjects.
 	/// </summary>
 	public void DrawAllBounds() {
 		rootNode.DrawAllBounds();
@@ -98,7 +98,7 @@ public class PointOctree<T> where T : class {
 
 	/// <summary>
 	/// Draws the bounds of all objects in the tree visually for debugging.
-	/// Must be called from OnGrawGizmos externally. See also: DrawAllBounds.
+	/// Must be called from OnDrawGizmos externally. See also: DrawAllBounds.
 	/// </summary>
 	public void DrawAllObjects() {
 		rootNode.DrawAllObjects();
