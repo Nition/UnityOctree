@@ -276,7 +276,7 @@ public class PointOctreeNode<T> where T : class {
 
         // Create the bounding box.
 		actualBoundsSize = new Vector3(SideLength, SideLength, SideLength);
-        bounds = new Bounds(Center, size);
+        bounds = new Bounds(Center, actualBoundsSize);
 
 		float quarter = SideLength / 4f;
 	    float childActualLength = SideLength / 2;
@@ -403,7 +403,7 @@ public class PointOctreeNode<T> where T : class {
 				totalObjects += child.objects.Count;
 			}
 		}
-		return totalObjects <= numObjectsAllowed;
+        return totalObjects <= NUM_OBJECTS_ALLOWED;
 	}
 
 	// Returns true if this node or any of its children, grandchildren etc have something in them
