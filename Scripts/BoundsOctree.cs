@@ -102,9 +102,10 @@ public class BoundsOctree<T> {
 	/// <param name="checkBounds">bounds to check.</param>
 	/// <returns>True if there was a collision.</returns>
 	public bool IsColliding(Bounds checkBounds) {
-		#if UNITY_EDITOR
-		AddCollisionCheck(checkBounds);
-		#endif
+		//#if UNITY_EDITOR
+		// For debugging
+		//AddCollisionCheck(checkBounds);
+		//#endif
 		return rootNode.IsColliding(ref checkBounds);
 	}
 
@@ -114,9 +115,10 @@ public class BoundsOctree<T> {
 	/// <param name="checkBounds">bounds to check.</param>
 	/// <returns>Objects that intersect with the specified bounds.</returns>
 	public T[] GetColliding(Bounds checkBounds) {
-		#if UNITY_EDITOR
-		AddCollisionCheck(checkBounds);
-		#endif
+		//#if UNITY_EDITOR
+		// For debugging
+		//AddCollisionCheck(checkBounds);
+		//#endif
 		List<T> collidingWith = new List<T>();
 		rootNode.GetColliding(ref checkBounds, collidingWith);
 		return collidingWith.ToArray();

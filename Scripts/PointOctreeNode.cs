@@ -96,7 +96,7 @@ public class PointOctreeNode<T> where T : class {
 	/// <param name="maxDistance">Maximum distance from the ray to consider.</param>
 	/// <param name="result">List result.</param>
 	/// <returns>Objects within range.</returns>
-	public void GetNearby(ref Ray ray, float maxDistance, List<T> result) {
+	public void GetNearby(ref Ray ray, ref float maxDistance, List<T> result) {
 		// Does the ray hit this node at all?
 		// Note: Expanding the bounds is not exactly the same as a real distance check, but it's fast.
 		// TODO: Does someone have a fast AND accurate formula to do this check?
@@ -117,7 +117,7 @@ public class PointOctreeNode<T> where T : class {
 		// Check children
 		if (children != null) {
 			for (int i = 0; i < 8; i++) {
-				children[i].GetNearby(ref ray, maxDistance, result);
+				children[i].GetNearby(ref ray, ref maxDistance, result);
 			}
 		}
 	}

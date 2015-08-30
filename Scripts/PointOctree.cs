@@ -88,7 +88,7 @@ public class PointOctree<T> where T : class {
 	/// <returns>Objects within range.</returns>
 	public T[] GetNearby(Ray ray, float maxDistance) {
 		List<T> collidingWith = new List<T>();
-		rootNode.GetNearby(ref ray, maxDistance, collidingWith);
+		rootNode.GetNearby(ref ray, ref maxDistance, collidingWith);
 		return collidingWith.ToArray();
 	}
 
