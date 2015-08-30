@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 
 // A Dynamic Octree for storing any objects that can be described as a single point
 // See also: BoundsOctree, where objects are described by AABB bounds
@@ -80,12 +81,15 @@ public class PointOctree<T> where T : class {
 
 	/// <summary>
 	/// Return objects that are within maxDistance of the specified ray.
+	/// If none, returns an empty array (not null).
 	/// </summary>
-	/// <param name="ray">The ray.</param>
+	/// <param name="ray">The ray. Passing as ref to improve performance since it won't have to be copied.</param>
 	/// <param name="maxDistance">Maximum distance from the ray to consider.</param>
 	/// <returns>Objects within range.</returns>
 	public T[] GetNearby(Ray ray, float maxDistance) {
-		return rootNode.GetNearby(ray, maxDistance);
+		List<T> collidingWith = new List<T>();
+		rootNode.GetNearby(ref ray, maxDistance, collidingWith);
+		return collidingWith.ToArray();
 	}
 
 	/// <summary>

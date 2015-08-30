@@ -11,9 +11,9 @@ public class PointOctreeNode<T> where T : class {
 
 	// Minimum size for a node in this octree
 	float minSize;
-    // Bounding box that represents this node
-    Bounds bounds = default(Bounds);
-    // Objects in this node
+	// Bounding box that represents this node
+	Bounds bounds = default(Bounds);
+	// Objects in this node
 	readonly List<OctreeObject> objects = new List<OctreeObject>();
 	// Child nodes, if any
 	PointOctreeNode<T>[] children = null;
@@ -62,10 +62,10 @@ public class PointOctreeNode<T> where T : class {
 	/// </summary>
 	/// <param name="obj">Object to remove.</param>
 	/// <returns>True if the object was removed successfully.</returns>
-    public bool Remove(T obj) {
+	public bool Remove(T obj) {
 		bool removed = false;
 
-		for(int i = 0; i < objects.Count; i++) {
+		for (int i = 0; i < objects.Count; i++) {
 			if (objects[i].Obj.Equals(obj)) {
 				removed = objects.Remove(objects[i]);
 				break;
@@ -73,7 +73,7 @@ public class PointOctreeNode<T> where T : class {
 		}
 
 		if (!removed && children != null) {
-			for(int i = 0; i < 8; i++) {
+			for (int i = 0; i < 8; i++) {
 				removed = children[i].Remove(obj);
 				if (removed) break;
 			}
@@ -87,15 +87,16 @@ public class PointOctreeNode<T> where T : class {
 		}
 
 		return removed;
-    }
+	}
 
 	/// <summary>
 	/// Return objects that are within maxDistance of the specified ray.
 	/// </summary>
 	/// <param name="ray">The ray.</param>
 	/// <param name="maxDistance">Maximum distance from the ray to consider.</param>
+	/// <param name="result">List result.</param>
 	/// <returns>Objects within range.</returns>
-	public T[] GetNearby(Ray ray, float maxDistance) {
+	public void GetNearby(ref Ray ray, float maxDistance, List<T> result) {
 		// Does the ray hit this node at all?
 		// Note: Expanding the bounds is not exactly the same as a real distance check, but it's fast.
 		// TODO: Does someone have a fast AND accurate formula to do this check?
@@ -103,28 +104,22 @@ public class PointOctreeNode<T> where T : class {
 		bool intersected = bounds.IntersectRay(ray);
 		bounds.size = actualBoundsSize;
 		if (!intersected) {
-			return new T[] {};
+			return;
 		}
-
-		List<T> collidingWith = new List<T>();
 
 		// Check against any objects in this node
 		for (int i = 0; i < objects.Count; i++) {
 			if (DistanceToRay(ray, objects[i].Pos) <= maxDistance) {
-				collidingWith.Add(objects[i].Obj);
+				result.Add(objects[i].Obj);
 			}
 		}
 
 		// Check children
 		if (children != null) {
 			for (int i = 0; i < 8; i++) {
-				T[] childColliding = children[i].GetNearby(ray, maxDistance);
-				if (childColliding != null) collidingWith.AddRange(childColliding);
+				children[i].GetNearby(ref ray, maxDistance, result);
 			}
 		}
-
-
-		return collidingWith.ToArray();
 	}
 
 	/// <summary>
@@ -272,14 +267,14 @@ public class PointOctreeNode<T> where T : class {
 	void SetValues(float baseLengthVal, float minSizeVal, Vector3 centerVal) {
 		SideLength = baseLengthVal;
 		minSize = minSizeVal;
-        Center = centerVal;
+		Center = centerVal;
 
-        // Create the bounding box.
+		// Create the bounding box.
 		actualBoundsSize = new Vector3(SideLength, SideLength, SideLength);
-        bounds = new Bounds(Center, size);
+		bounds = new Bounds(Center, actualBoundsSize);
 
 		float quarter = SideLength / 4f;
-	    float childActualLength = SideLength / 2;
+		float childActualLength = SideLength / 2;
 		Vector3 childActualSize = new Vector3(childActualLength, childActualLength, childActualLength);
 		childBounds = new Bounds[8];
 		childBounds[0] = new Bounds(Center + new Vector3(-quarter, quarter, -quarter), childActualSize);
@@ -335,9 +330,9 @@ public class PointOctreeNode<T> where T : class {
 	/// <summary>
 	/// Splits the octree into eight children.
 	/// </summary>
-    void Split() {
+	void Split() {
 		float quarter = SideLength / 4f;
-	    float newLength = SideLength / 2;
+		float newLength = SideLength / 2;
 		children = new PointOctreeNode<T>[8];
 		children[0] = new PointOctreeNode<T>(newLength, minSize, Center + new Vector3(-quarter, quarter, -quarter));
 		children[1] = new PointOctreeNode<T>(newLength, minSize, Center + new Vector3(quarter, quarter, -quarter));
@@ -347,7 +342,7 @@ public class PointOctreeNode<T> where T : class {
 		children[5] = new PointOctreeNode<T>(newLength, minSize, Center + new Vector3(quarter, -quarter, -quarter));
 		children[6] = new PointOctreeNode<T>(newLength, minSize, Center + new Vector3(-quarter, -quarter, quarter));
 		children[7] = new PointOctreeNode<T>(newLength, minSize, Center + new Vector3(quarter, -quarter, quarter));
-    }
+	}
 
 	/// <summary>
 	/// Merge all children into this node - the opposite of Split.
@@ -394,7 +389,7 @@ public class PointOctreeNode<T> where T : class {
 	bool ShouldMerge() {
 		int totalObjects = objects.Count;
 		if (children != null) {
-			foreach(PointOctreeNode<T> child in children) {
+			foreach (PointOctreeNode<T> child in children) {
 				if (child.children != null) {
 					// If any of the *children* have children, there are definitely too many to merge,
 					// or the child woudl have been merged already
@@ -403,7 +398,7 @@ public class PointOctreeNode<T> where T : class {
 				totalObjects += child.objects.Count;
 			}
 		}
-		return totalObjects <= numObjectsAllowed;
+		return totalObjects <= NUM_OBJECTS_ALLOWED;
 	}
 
 	// Returns true if this node or any of its children, grandchildren etc have something in them

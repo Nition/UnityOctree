@@ -97,7 +97,7 @@ public class BoundsOctreeNode<T> {
 	/// </summary>
 	/// <param name="checkBounds">Bounds to check.</param>
 	/// <returns>True if there was a collision.</returns>
-	public bool IsColliding(Bounds checkBounds) {
+	public bool IsColliding(ref Bounds checkBounds) {
 		// Are the input bounds at least partially in this node?
 		if (!bounds.Intersects(checkBounds)) {
 			return false;
@@ -113,7 +113,7 @@ public class BoundsOctreeNode<T> {
 		// Check children
 		if (children != null) {
 			for (int i = 0; i < 8; i++) {
-				if (children[i].IsColliding(checkBounds)) {
+				if (children[i].IsColliding(ref checkBounds)) {
 					return true;
 				}
 			}
@@ -125,30 +125,28 @@ public class BoundsOctreeNode<T> {
 	/// <summary>
 	/// Returns an array of objects that intersect with the specified bounds, if any. Otherwise returns an empty array. See also: IsColliding.
 	/// </summary>
-	/// <param name="checkBounds">Bounds to check.</param>
+	/// <param name="checkBounds">Bounds to check. Passing by ref as it improve performance with structs.</param>
+	/// <param name="result">List result.</param>
 	/// <returns>Objects that intersect with the specified bounds.</returns>
-	public T[] GetColliding(Bounds checkBounds) {
-		List<T> collidingWith = new List<T>();
+	public void GetColliding(ref Bounds checkBounds, List<T> result) {
 		// Are the input bounds at least partially in this node?
 		if (!bounds.Intersects(checkBounds)) {
-			return collidingWith.ToArray();
+			return;
 		}
 
 		// Check against any objects in this node
 		for (int i = 0; i < objects.Count; i++) {
 			if (objects[i].Bounds.Intersects(checkBounds)) {
-				collidingWith.Add(objects[i].Obj);
+				result.Add(objects[i].Obj);
 			}
 		}
 
 		// Check children
 		if (children != null) {
 			for (int i = 0; i < 8; i++) {
-				T[] childColliding = children[i].GetColliding(checkBounds);
-				if (childColliding != null) collidingWith.AddRange(childColliding);
+				children[i].GetColliding(ref checkBounds, result);
 			}
 		}
-		return collidingWith.ToArray();
 	}
 
 	/// <summary>

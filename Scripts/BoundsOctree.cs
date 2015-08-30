@@ -105,7 +105,7 @@ public class BoundsOctree<T> {
 		#if UNITY_EDITOR
 		AddCollisionCheck(checkBounds);
 		#endif
-		return rootNode.IsColliding(checkBounds);
+		return rootNode.IsColliding(ref checkBounds);
 	}
 
 	/// <summary>
@@ -117,7 +117,9 @@ public class BoundsOctree<T> {
 		#if UNITY_EDITOR
 		AddCollisionCheck(checkBounds);
 		#endif
-		return rootNode.GetColliding(checkBounds);
+		List<T> collidingWith = new List<T>();
+		rootNode.GetColliding(ref checkBounds, collidingWith);
+		return collidingWith.ToArray();
 	}
 
 	/// <summary>
