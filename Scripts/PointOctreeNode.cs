@@ -100,7 +100,7 @@ public class PointOctreeNode<T> where T : class {
 		// Does the ray hit this node at all?
 		// Note: Expanding the bounds is not exactly the same as a real distance check, but it's fast.
 		// TODO: Does someone have a fast AND accurate formula to do this check?
-		bounds.Expand(new Vector3(maxDistance, maxDistance, maxDistance));
+		bounds.Expand(new Vector3(maxDistance * 2, maxDistance * 2, maxDistance * 2));
 		bool intersected = bounds.IntersectRay(ray);
 		bounds.size = actualBoundsSize;
 		if (!intersected) {
