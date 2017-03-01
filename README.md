@@ -96,4 +96,7 @@ void OnDrawGizmos() {
 - Point octrees need the marker.tif file to be in your Unity /Assets/Gizmos subfolder for DrawAllObjects to work
 
 
+**Potential Improvements**
+
+A significant portion of the octree's time is taken just to traverse through the nodes themselves. There's potential for a performance increase by maybe linearising the tree - representing all the nodes as a one-dimensional array lookup.
 
