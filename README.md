@@ -98,5 +98,5 @@ void OnDrawGizmos() {
 
 **Potential Improvements**
 
-A significant portion of the octree's time is taken just to traverse through the nodes themselves. There's potential for a performance increase by maybe linearising the tree - representing all the nodes as a one-dimensional array lookup.
+A significant portion of the octree's time is taken just to traverse through the nodes themselves. There's potential for a performance increase there, maybe by linearising the tree - that is, representing all the nodes as a one-dimensional array lookup.
 
