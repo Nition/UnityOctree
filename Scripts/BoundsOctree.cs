@@ -37,7 +37,8 @@ public class BoundsOctree<T> {
 	// For collision visualisation. Automatically removed in builds.
 	#if UNITY_EDITOR
 	const int numCollisionsToSave = 4;
-	readonly Queue<Bounds> lastCollisionChecks = new Queue<Bounds>();
+	readonly Queue<Bounds> lastBoundsCollisionChecks = new Queue<Bounds>();
+	readonly Queue<Ray> lastRayCollisionChecks = new Queue<Ray>();
 	#endif
 
 	/// <summary>
@@ -110,6 +111,19 @@ public class BoundsOctree<T> {
 	}
 
 	/// <summary>
+	/// Check if the specified ray intersects with anything in the tree. See also: GetColliding.
+	/// </summary>
+	/// <param name="checkRay">ray to check.</param>
+	/// <returns>True if there was a collision.</returns>
+	public bool IsColliding(Ray checkRay) {
+		//#if UNITY_EDITOR
+		// For debugging
+		//AddCollisionCheck(checkRay);
+		//#endif
+		return rootNode.IsColliding(ref checkRay);
+	}
+
+	/// <summary>
 	/// Returns an array of objects that intersect with the specified bounds, if any. Otherwise returns an empty array. See also: IsColliding.
 	/// </summary>
 	/// <param name="checkBounds">bounds to check.</param>
@@ -121,6 +135,21 @@ public class BoundsOctree<T> {
 		//#endif
 		List<T> collidingWith = new List<T>();
 		rootNode.GetColliding(ref checkBounds, collidingWith);
+		return collidingWith.ToArray();
+	}
+
+	/// <summary>
+	/// Returns an array of objects that intersect with the specified ray, if any. Otherwise returns an empty array. See also: IsColliding.
+	/// </summary>
+	/// <param name="checkRay">ray to check.</param>
+	/// <returns>Objects that intersect with the specified ray.</returns>
+	public T[] GetColliding(Ray checkRay) {
+		//#if UNITY_EDITOR
+		// For debugging
+		//AddCollisionCheck(checkRay);
+		//#endif
+		List<T> collidingWith = new List<T>();
+		rootNode.GetColliding(ref checkRay, collidingWith);
 		return collidingWith.ToArray();
 	}
 
@@ -149,9 +178,15 @@ public class BoundsOctree<T> {
 	#if UNITY_EDITOR
 	public void DrawCollisionChecks() {
 		int count = 0;
-		foreach (Bounds collisionCheck in lastCollisionChecks) {
+		foreach (Bounds collisionCheck in lastBoundsCollisionChecks) {
 			Gizmos.color = new Color(1.0f, 1.0f - ((float)count / numCollisionsToSave), 1.0f);
 			Gizmos.DrawCube(collisionCheck.center, collisionCheck.size);
+			count++;
+		}
+
+		foreach (Ray collisionCheck in lastRayCollisionChecks) {
+			Gizmos.color = new Color(1.0f, 1.0f - ((float)count / numCollisionsToSave), 1.0f);
+			Gizmos.DrawRay(collisionCheck.origin, collisionCheck.direction);
 			count++;
 		}
 		Gizmos.color = Color.white;
@@ -167,9 +202,23 @@ public class BoundsOctree<T> {
 	/// <param name="checkBounds">bounds that were passed in to check for collisions.</param>
 	#if UNITY_EDITOR
 	void AddCollisionCheck(Bounds checkBounds) {
-		lastCollisionChecks.Enqueue(checkBounds);
-		if (lastCollisionChecks.Count > numCollisionsToSave) {
-			lastCollisionChecks.Dequeue();
+		lastBoundsCollisionChecks.Enqueue(checkBounds);
+		if (lastBoundsCollisionChecks.Count > numCollisionsToSave) {
+			lastBoundsCollisionChecks.Dequeue();
+		}
+	}
+	#endif
+
+	/// <summary>
+	/// Used for visualising collision checks with DrawCollisionChecks.
+	/// Automatically removed from builds so that collision checks aren't slowed down.
+	/// </summary>
+	/// <param name="checkRay">ray that was passed in to check for collisions.</param>
+	#if UNITY_EDITOR
+	void AddCollisionCheck(Ray checkRay) {
+		lastRayCollisionChecks.Enqueue(checkRay);
+		if (lastRayCollisionChecks.Count > numCollisionsToSave) {
+			lastRayCollisionChecks.Dequeue();
 		}
 	}
 	#endif

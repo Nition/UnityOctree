@@ -123,9 +123,39 @@ public class BoundsOctreeNode<T> {
 	}
 
 	/// <summary>
+	/// Check if the specified ray intersects with anything in the tree. See also: GetColliding.
+	/// </summary>
+	/// <param name="checkRay">Ray to check.</param>
+	/// <returns>True if there was a collision.</returns>
+	public bool IsColliding(ref Ray checkRay) {
+		// Is the input ray at least partially in this node?
+		if (!bounds.IntersectRay(checkRay)) {
+			return false;
+		}
+
+		// Check against any objects in this node
+		for (int i = 0; i < objects.Count; i++) {
+			if (objects[i].Bounds.IntersectRay(checkRay)) {
+				return true;
+			}
+		}
+
+		// Check children
+		if (children != null) {
+			for (int i = 0; i < 8; i++) {
+				if (children[i].IsColliding(ref checkRay)) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	/// <summary>
 	/// Returns an array of objects that intersect with the specified bounds, if any. Otherwise returns an empty array. See also: IsColliding.
 	/// </summary>
-	/// <param name="checkBounds">Bounds to check. Passing by ref as it improve performance with structs.</param>
+	/// <param name="checkBounds">Bounds to check. Passing by ref as it improves performance with structs.</param>
 	/// <param name="result">List result.</param>
 	/// <returns>Objects that intersect with the specified bounds.</returns>
 	public void GetColliding(ref Bounds checkBounds, List<T> result) {
@@ -145,6 +175,33 @@ public class BoundsOctreeNode<T> {
 		if (children != null) {
 			for (int i = 0; i < 8; i++) {
 				children[i].GetColliding(ref checkBounds, result);
+			}
+		}
+	}
+
+	/// <summary>
+	/// Returns an array of objects that intersect with the specified ray, if any. Otherwise returns an empty array. See also: IsColliding.
+	/// </summary>
+	/// <param name="checkRay">Ray to check. Passing by ref as it improves performance with structs.</param>
+	/// <param name="result">List result.</param>
+	/// <returns>Objects that intersect with the specified ray.</returns>
+	public void GetColliding(ref Ray checkRay, List<T> result) {
+		// Is the input ray at least partially in this node?
+		if (!bounds.IntersectRay(checkRay)) {
+			return;
+		}
+
+		// Check against any objects in this node
+		for (int i = 0; i < objects.Count; i++) {
+			if (objects[i].Bounds.IntersectRay(checkRay)) {
+				result.Add(objects[i].Obj);
+			}
+		}
+
+		// Check children
+		if (children != null) {
+			for (int i = 0; i < 8; i++) {
+				children[i].GetColliding(ref checkRay, result);
 			}
 		}
 	}
