@@ -145,7 +145,7 @@ public class BoundsOctree<T> {
 	/// <param name="checkRay">ray to check.</param>
 	/// <param name="maxDistance">distance to check.</param>
 	/// <returns>Objects that intersect with the specified ray.</returns>
-	public T[] GetColliding(Ray checkRay, float maxDistance = Mathf.Infinity) {
+	public T[] GetColliding(Ray checkRay, float maxDistance = float.PositiveInfinity) {
 		//#if UNITY_EDITOR
 		// For debugging
 		//AddCollisionCheck(checkRay);
