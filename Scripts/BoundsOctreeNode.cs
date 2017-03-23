@@ -126,16 +126,18 @@ public class BoundsOctreeNode<T> {
 	/// Check if the specified ray intersects with anything in the tree. See also: GetColliding.
 	/// </summary>
 	/// <param name="checkRay">Ray to check.</param>
+	/// <param name="maxDistance">Distance to check.</param>
 	/// <returns>True if there was a collision.</returns>
-	public bool IsColliding(ref Ray checkRay) {
+	public bool IsColliding(ref Ray checkRay, float maxDistance = Mathf.Infinity) {
 		// Is the input ray at least partially in this node?
-		if (!bounds.IntersectRay(checkRay)) {
+		float distance;
+		if (!bounds.IntersectRay(checkRay, out distance) || distance > maxDistance) {
 			return false;
 		}
 
 		// Check against any objects in this node
 		for (int i = 0; i < objects.Count; i++) {
-			if (objects[i].Bounds.IntersectRay(checkRay)) {
+			if (objects[i].Bounds.IntersectRay(checkRay, out distance) && distance <= maxDistance) {
 				return true;
 			}
 		}
@@ -143,7 +145,7 @@ public class BoundsOctreeNode<T> {
 		// Check children
 		if (children != null) {
 			for (int i = 0; i < 8; i++) {
-				if (children[i].IsColliding(ref checkRay)) {
+				if (children[i].IsColliding(ref checkRay, maxDistance)) {
 					return true;
 				}
 			}
@@ -183,17 +185,20 @@ public class BoundsOctreeNode<T> {
 	/// Returns an array of objects that intersect with the specified ray, if any. Otherwise returns an empty array. See also: IsColliding.
 	/// </summary>
 	/// <param name="checkRay">Ray to check. Passing by ref as it improves performance with structs.</param>
+	/// <param name="maxDistance">Distance to check.</param>
 	/// <param name="result">List result.</param>
 	/// <returns>Objects that intersect with the specified ray.</returns>
-	public void GetColliding(ref Ray checkRay, List<T> result) {
+	public void GetColliding(ref Ray checkRay, List<T> result, float maxDistance = Mathf.Infinity)
+	{
+		float distance;
 		// Is the input ray at least partially in this node?
-		if (!bounds.IntersectRay(checkRay)) {
+		if (!bounds.IntersectRay(checkRay, out distance) || distance > maxDistance) {
 			return;
 		}
 
 		// Check against any objects in this node
 		for (int i = 0; i < objects.Count; i++) {
-			if (objects[i].Bounds.IntersectRay(checkRay)) {
+			if (objects[i].Bounds.IntersectRay(checkRay, out distance) && distance <= maxDistance) {
 				result.Add(objects[i].Obj);
 			}
 		}
@@ -201,7 +206,7 @@ public class BoundsOctreeNode<T> {
 		// Check children
 		if (children != null) {
 			for (int i = 0; i < 8; i++) {
-				children[i].GetColliding(ref checkRay, result);
+				children[i].GetColliding(ref checkRay, result, maxDistance);
 			}
 		}
 	}

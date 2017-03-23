@@ -52,7 +52,7 @@ public class BoundsOctree<T> {
 		if (minNodeSize > initialWorldSize) {
 			Debug.LogWarning("Minimum node size must be at least as big as the initial world size. Was: " + minNodeSize + " Adjusted to: " + initialWorldSize);
 			minNodeSize = initialWorldSize;
-		}		
+		}
 		Count = 0;
 		initialSize = initialWorldSize;
 		minSize = minNodeSize;
@@ -114,13 +114,14 @@ public class BoundsOctree<T> {
 	/// Check if the specified ray intersects with anything in the tree. See also: GetColliding.
 	/// </summary>
 	/// <param name="checkRay">ray to check.</param>
+	/// <param name="maxDistance">distance to check.</param>
 	/// <returns>True if there was a collision.</returns>
-	public bool IsColliding(Ray checkRay) {
+	public bool IsColliding(Ray checkRay, float maxDistance) {
 		//#if UNITY_EDITOR
 		// For debugging
 		//AddCollisionCheck(checkRay);
 		//#endif
-		return rootNode.IsColliding(ref checkRay);
+		return rootNode.IsColliding(ref checkRay, maxDistance);
 	}
 
 	/// <summary>
@@ -142,14 +143,15 @@ public class BoundsOctree<T> {
 	/// Returns an array of objects that intersect with the specified ray, if any. Otherwise returns an empty array. See also: IsColliding.
 	/// </summary>
 	/// <param name="checkRay">ray to check.</param>
+	/// <param name="maxDistance">distance to check.</param>
 	/// <returns>Objects that intersect with the specified ray.</returns>
-	public T[] GetColliding(Ray checkRay) {
+	public T[] GetColliding(Ray checkRay, float maxDistance = Mathf.Infinity) {
 		//#if UNITY_EDITOR
 		// For debugging
 		//AddCollisionCheck(checkRay);
 		//#endif
 		List<T> collidingWith = new List<T>();
-		rootNode.GetColliding(ref checkRay, collidingWith);
+		rootNode.GetColliding(ref checkRay, collidingWith, maxDistance);
 		return collidingWith.ToArray();
 	}
 
