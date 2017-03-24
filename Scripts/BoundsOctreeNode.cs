@@ -278,7 +278,7 @@ public class BoundsOctreeNode<T> {
 		if (BaseLength < (2 * minLength)) {
 			return this;
 		}
-		if (objects.Count == 0 && children.Length == 0) {
+		if (objects.Count == 0 && children != null && children.Length == 0) {
 			return this;
 		}
 
