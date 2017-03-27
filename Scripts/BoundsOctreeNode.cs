@@ -223,6 +223,11 @@ public class BoundsOctreeNode<T> {
 		children = childOctrees;
 	}
 
+	public Bounds GetBounds()
+	{
+		return bounds;
+	}
+
 	/// <summary>
 	/// Draws node boundaries visually for debugging.
 	/// Must be called from OnDrawGizmos externally. See also: DrawAllObjects.

@@ -153,6 +153,11 @@ public class BoundsOctree<T> {
 		rootNode.GetColliding(ref checkRay, collidingWith, maxDistance);
 	}
 
+	public Bounds GetMaxBounds()
+	{
+		return rootNode.GetBounds();
+	}
+
 	/// <summary>
 	/// Draws node boundaries visually for debugging.
 	/// Must be called from OnDrawGizmos externally. See also: DrawAllObjects.
