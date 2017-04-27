@@ -334,6 +334,11 @@ public class BoundsOctreeNode<T> {
 			return this;
 		}
 
+		// No objects in entire octree
+		if (bestFit == -1) {
+			return this;
+		}
+
 		// We have children. Use the appropriate child as the new root node
 		return children[bestFit];
 	}
