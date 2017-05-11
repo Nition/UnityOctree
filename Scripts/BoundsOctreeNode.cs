@@ -283,7 +283,7 @@ public class BoundsOctreeNode<T> {
 		if (BaseLength < (2 * minLength)) {
 			return this;
 		}
-		if (objects.Count == 0 && children != null && children.Length == 0) {
+		if (objects.Count == 0 && (children == null || children.Length == 0)) {
 			return this;
 		}
 
@@ -331,6 +331,11 @@ public class BoundsOctreeNode<T> {
 			// We don't have any children, so just shrink this node to the new size
 			// We already know that everything will still fit in it
 			SetValues(BaseLength / 2, minSize, looseness, childBounds[bestFit].center);
+			return this;
+		}
+
+		// No objects in entire octree
+		if (bestFit == -1) {
 			return this;
 		}
 
