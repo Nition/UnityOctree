@@ -37,7 +37,8 @@ public class BoundsOctree<T> {
 	// For collision visualisation. Automatically removed in builds.
 	#if UNITY_EDITOR
 	const int numCollisionsToSave = 4;
-	readonly Queue<Bounds> lastCollisionChecks = new Queue<Bounds>();
+	readonly Queue<Bounds> lastBoundsCollisionChecks = new Queue<Bounds>();
+	readonly Queue<Ray> lastRayCollisionChecks = new Queue<Ray>();
 	#endif
 
 	/// <summary>
@@ -51,7 +52,7 @@ public class BoundsOctree<T> {
 		if (minNodeSize > initialWorldSize) {
 			Debug.LogWarning("Minimum node size must be at least as big as the initial world size. Was: " + minNodeSize + " Adjusted to: " + initialWorldSize);
 			minNodeSize = initialWorldSize;
-		}		
+		}
 		Count = 0;
 		initialSize = initialWorldSize;
 		minSize = minNodeSize;
@@ -110,18 +111,51 @@ public class BoundsOctree<T> {
 	}
 
 	/// <summary>
+	/// Check if the specified ray intersects with anything in the tree. See also: GetColliding.
+	/// </summary>
+	/// <param name="checkRay">ray to check.</param>
+	/// <param name="maxDistance">distance to check.</param>
+	/// <returns>True if there was a collision.</returns>
+	public bool IsColliding(Ray checkRay, float maxDistance) {
+		//#if UNITY_EDITOR
+		// For debugging
+		//AddCollisionCheck(checkRay);
+		//#endif
+		return rootNode.IsColliding(ref checkRay, maxDistance);
+	}
+
+	/// <summary>
 	/// Returns an array of objects that intersect with the specified bounds, if any. Otherwise returns an empty array. See also: IsColliding.
 	/// </summary>
+	/// <param name="collidingWith">list to store intersections.</param>
 	/// <param name="checkBounds">bounds to check.</param>
 	/// <returns>Objects that intersect with the specified bounds.</returns>
-	public T[] GetColliding(Bounds checkBounds) {
+	public void GetColliding(List<T> collidingWith, Bounds checkBounds) {
 		//#if UNITY_EDITOR
 		// For debugging
 		//AddCollisionCheck(checkBounds);
 		//#endif
-		List<T> collidingWith = new List<T>();
 		rootNode.GetColliding(ref checkBounds, collidingWith);
-		return collidingWith.ToArray();
+	}
+
+	/// <summary>
+	/// Returns an array of objects that intersect with the specified ray, if any. Otherwise returns an empty array. See also: IsColliding.
+	/// </summary>
+	/// <param name="collidingWith">list to store intersections.</param>
+	/// <param name="checkRay">ray to check.</param>
+	/// <param name="maxDistance">distance to check.</param>
+	/// <returns>Objects that intersect with the specified ray.</returns>
+	public void GetColliding(List<T> collidingWith, Ray checkRay, float maxDistance = float.PositiveInfinity) {
+		//#if UNITY_EDITOR
+		// For debugging
+		//AddCollisionCheck(checkRay);
+		//#endif
+		rootNode.GetColliding(ref checkRay, collidingWith, maxDistance);
+	}
+
+	public Bounds GetMaxBounds()
+	{
+		return rootNode.GetBounds();
 	}
 
 	/// <summary>
@@ -149,9 +183,15 @@ public class BoundsOctree<T> {
 	#if UNITY_EDITOR
 	public void DrawCollisionChecks() {
 		int count = 0;
-		foreach (Bounds collisionCheck in lastCollisionChecks) {
+		foreach (Bounds collisionCheck in lastBoundsCollisionChecks) {
 			Gizmos.color = new Color(1.0f, 1.0f - ((float)count / numCollisionsToSave), 1.0f);
 			Gizmos.DrawCube(collisionCheck.center, collisionCheck.size);
+			count++;
+		}
+
+		foreach (Ray collisionCheck in lastRayCollisionChecks) {
+			Gizmos.color = new Color(1.0f, 1.0f - ((float)count / numCollisionsToSave), 1.0f);
+			Gizmos.DrawRay(collisionCheck.origin, collisionCheck.direction);
 			count++;
 		}
 		Gizmos.color = Color.white;
@@ -167,9 +207,23 @@ public class BoundsOctree<T> {
 	/// <param name="checkBounds">bounds that were passed in to check for collisions.</param>
 	#if UNITY_EDITOR
 	void AddCollisionCheck(Bounds checkBounds) {
-		lastCollisionChecks.Enqueue(checkBounds);
-		if (lastCollisionChecks.Count > numCollisionsToSave) {
-			lastCollisionChecks.Dequeue();
+		lastBoundsCollisionChecks.Enqueue(checkBounds);
+		if (lastBoundsCollisionChecks.Count > numCollisionsToSave) {
+			lastBoundsCollisionChecks.Dequeue();
+		}
+	}
+	#endif
+
+	/// <summary>
+	/// Used for visualising collision checks with DrawCollisionChecks.
+	/// Automatically removed from builds so that collision checks aren't slowed down.
+	/// </summary>
+	/// <param name="checkRay">ray that was passed in to check for collisions.</param>
+	#if UNITY_EDITOR
+	void AddCollisionCheck(Ray checkRay) {
+		lastRayCollisionChecks.Enqueue(checkRay);
+		if (lastRayCollisionChecks.Count > numCollisionsToSave) {
+			lastRayCollisionChecks.Dequeue();
 		}
 	}
 	#endif
@@ -190,23 +244,29 @@ public class BoundsOctree<T> {
 		// Create a new, bigger octree root node
 		rootNode = new BoundsOctreeNode<T>(newLength, minSize, looseness, newCenter);
 
-		// Create 7 new octree children to go with the old root as children of the new root
-		int rootPos = GetRootPosIndex(xDirection, yDirection, zDirection);
-		BoundsOctreeNode<T>[] children = new BoundsOctreeNode<T>[8];
-		for (int i = 0; i < 8; i++) {
-			if (i == rootPos) {
-				children[i] = oldRoot;
+		if (oldRoot.HasAnyObjects())
+		{
+			// Create 7 new octree children to go with the old root as children of the new root
+			int rootPos = GetRootPosIndex(xDirection, yDirection, zDirection);
+			BoundsOctreeNode<T>[] children = new BoundsOctreeNode<T>[8];
+			for (int i = 0; i < 8; i++)
+			{
+				if (i == rootPos)
+				{
+					children[i] = oldRoot;
+				}
+				else
+				{
+					xDirection = i % 2 == 0 ? -1 : 1;
+					yDirection = i > 3 ? -1 : 1;
+					zDirection = (i < 2 || (i > 3 && i < 6)) ? -1 : 1;
+					children[i] = new BoundsOctreeNode<T>(rootNode.BaseLength, minSize, looseness, newCenter + new Vector3(xDirection * half, yDirection * half, zDirection * half));
+				}
 			}
-			else {
-				xDirection = i % 2 == 0 ? -1 : 1;
-				yDirection = i > 3 ? -1 : 1;
-				zDirection = (i < 2 || (i > 3 && i < 6)) ? -1 : 1;
-				children[i] = new BoundsOctreeNode<T>(rootNode.BaseLength, minSize, looseness, newCenter + new Vector3(xDirection * half, yDirection * half, zDirection * half));
-			}
-		}
 
-		// Attach the new children to the new root node
-		rootNode.SetChildren(children);
+			// Attach the new children to the new root node
+			rootNode.SetChildren(children);
+		}
 	}
 
 	/// <summary>
