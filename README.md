@@ -64,11 +64,12 @@ boundsTree.Remove(myObject);
 **Built-in Functions**
 
 ```C#
-bool result = boundsTree.IsColliding(bounds);
+bool isColliding = boundsTree.IsColliding(bounds);
 ```
 
 ```C#
-GameObject[] result2 = boundsTree.GetColliding(bounds);
+List<GameObject> collidingWith = new List<GameObject>();
+boundsTree.GetColliding(collidingWith, bounds);
 ```
 - Where GameObject is the type of the octree
 
