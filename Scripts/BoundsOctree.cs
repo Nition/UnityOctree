@@ -244,23 +244,29 @@ public class BoundsOctree<T> {
 		// Create a new, bigger octree root node
 		rootNode = new BoundsOctreeNode<T>(newLength, minSize, looseness, newCenter);
 
-		// Create 7 new octree children to go with the old root as children of the new root
-		int rootPos = GetRootPosIndex(xDirection, yDirection, zDirection);
-		BoundsOctreeNode<T>[] children = new BoundsOctreeNode<T>[8];
-		for (int i = 0; i < 8; i++) {
-			if (i == rootPos) {
-				children[i] = oldRoot;
+		if (oldRoot.Count > 0)
+		{
+			// Create 7 new octree children to go with the old root as children of the new root
+			int rootPos = GetRootPosIndex(xDirection, yDirection, zDirection);
+			BoundsOctreeNode<T>[] children = new BoundsOctreeNode<T>[8];
+			for (int i = 0; i < 8; i++)
+			{
+				if (i == rootPos)
+				{
+					children[i] = oldRoot;
+				}
+				else
+				{
+					xDirection = i % 2 == 0 ? -1 : 1;
+					yDirection = i > 3 ? -1 : 1;
+					zDirection = (i < 2 || (i > 3 && i < 6)) ? -1 : 1;
+					children[i] = new BoundsOctreeNode<T>(rootNode.BaseLength, minSize, looseness, newCenter + new Vector3(xDirection * half, yDirection * half, zDirection * half));
+				}
 			}
-			else {
-				xDirection = i % 2 == 0 ? -1 : 1;
-				yDirection = i > 3 ? -1 : 1;
-				zDirection = (i < 2 || (i > 3 && i < 6)) ? -1 : 1;
-				children[i] = new BoundsOctreeNode<T>(rootNode.BaseLength, minSize, looseness, newCenter + new Vector3(xDirection * half, yDirection * half, zDirection * half));
-			}
-		}
 
-		// Attach the new children to the new root node
-		rootNode.SetChildren(children);
+			// Attach the new children to the new root node
+			rootNode.SetChildren(children);
+		}
 	}
 
 	/// <summary>

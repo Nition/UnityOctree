@@ -9,6 +9,8 @@ public class BoundsOctreeNode<T> {
 	// Length of this node if it has a looseness of 1.0
 	public float BaseLength { get; private set; }
 
+	public float Count { get { return objects.Count; } }
+
 	// Looseness value for this node
 	float looseness;
 	// Minimum size for a node in this octree
