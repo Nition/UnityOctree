@@ -244,7 +244,7 @@ public class BoundsOctree<T> {
 		// Create a new, bigger octree root node
 		rootNode = new BoundsOctreeNode<T>(newLength, minSize, looseness, newCenter);
 
-		if (oldRoot.Count > 0)
+		if (oldRoot.HasAnyObjects())
 		{
 			// Create 7 new octree children to go with the old root as children of the new root
 			int rootPos = GetRootPosIndex(xDirection, yDirection, zDirection);
