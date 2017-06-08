@@ -524,7 +524,7 @@ public class BoundsOctreeNode<T> {
 	/// Checks if this node or anything below it has something in it.
 	/// </summary>
 	/// <returns>True if this node or any of its children, grandchildren etc have something in them</returns>
-	public bool HasAnyObjects() {
+	internal bool HasAnyObjects() {
 		if (objects.Count > 0) return true;
 
 		if (children != null) {
