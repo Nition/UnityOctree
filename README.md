@@ -64,11 +64,12 @@ boundsTree.Remove(myObject);
 **Built-in Functions**
 
 ```C#
-bool result = boundsTree.IsColliding(bounds);
+bool isColliding = boundsTree.IsColliding(bounds);
 ```
 
 ```C#
-GameObject[] result2 = boundsTree.GetColliding(bounds);
+List<GameObject> collidingWith = new List<GameObject>();
+boundsTree.GetColliding(collidingWith, bounds);
 ```
 - Where GameObject is the type of the octree
 
@@ -96,4 +97,7 @@ void OnDrawGizmos() {
 - Point octrees need the marker.tif file to be in your Unity /Assets/Gizmos subfolder for DrawAllObjects to work
 
 
+**Potential Improvements**
+
+A significant portion of the octree's time is taken just to traverse through the nodes themselves. There's potential for a performance increase there, maybe by linearising the tree - that is, representing all the nodes as a one-dimensional array lookup.
 
