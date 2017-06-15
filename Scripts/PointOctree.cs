@@ -80,6 +80,23 @@ public class PointOctree<T> where T : class {
 	}
 
 	/// <summary>
+	/// Returns objects that are within maxDistance of the specified ray.
+	/// If none returns false. Uses supplied list for results.
+	/// </summary>
+	/// <param name="ray">The ray. Passing as ref to improve performance since it won't have to be copied.</param>
+	/// <param name="maxDistance">Maximum distance from the ray to consider</param>
+	/// <param name="nearBy">Pre-initialized list to populate</param>
+	/// <returns>True if items are found, false if not</returns>
+	public bool GetNearbyNonAlloc(Ray ray, float maxDistance, List<T> nearBy)
+	{
+		nearBy.Clear();
+		rootNode.GetNearby(ref ray, ref maxDistance, nearBy);
+		if (nearBy.Count > 0)
+			return true;
+		return false;
+	}
+	
+	/// <summary>
 	/// Return objects that are within maxDistance of the specified ray.
 	/// If none, returns an empty array (not null).
 	/// </summary>
