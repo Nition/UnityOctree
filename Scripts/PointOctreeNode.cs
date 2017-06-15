@@ -109,7 +109,7 @@ public class PointOctreeNode<T> where T : class {
 
 		// Check against any objects in this node
 		for (int i = 0; i < objects.Count; i++) {
-			if (DistanceToRay(ray, objects[i].Pos) <= maxDistance) {
+			if (DistanceToRay(ray, objects[i].Pos) <= (maxDistance * maxDistance)) {
 				result.Add(objects[i].Obj);
 			}
 		}
@@ -419,8 +419,8 @@ public class PointOctreeNode<T> where T : class {
 	/// </summary>
 	/// <param name="ray">The ray.</param>
 	/// <param name="point">The point to check distance from the ray.</param>
-	/// <returns>Distance from the point to the closest point of the ray.</returns>
+	/// <returns>Squared distance from the point to the closest point of the ray.</returns>
 	public static float DistanceToRay(Ray ray, Vector3 point) {
-		return Vector3.Cross(ray.direction, point - ray.origin).magnitude;
+		return Vector3.Cross(ray.direction, point - ray.origin).sqrMagnitude;
 	}
 }
