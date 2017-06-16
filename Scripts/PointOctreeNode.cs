@@ -66,7 +66,7 @@ public class PointOctreeNode<T> where T : class {
 		bool removed = false;
 
 		for (int i = 0; i < objects.Count; i++) {
-			if (objects[i].Obj.Equals(obj)) {
+			if ((object)(objects[i].Obj) == obj) {
 				removed = objects.Remove(objects[i]);
 				break;
 			}
