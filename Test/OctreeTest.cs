@@ -12,16 +12,17 @@ public class OctreeTest : MonoBehaviour
     {
         tree = new LooseOctree<GameObject>(200F, Vector3.zero, 1.25F);
         int count = 0;
-        for (int x = -1000; x <= 1000; x += 40)
+        for (int x = -100; x <= 100; x += 5)
         {
-            for (int y = -1000; y <= 1000; y += 40)
+            for (int y = -100; y <= 100; y += 5)
             {
-                for (int z = -1000; z <= 1000; z += 40)
+                for (int z = -100; z <= 100; z += 5)
                 {
                     count++;
                     GameObject obj = new GameObject("TestObject" + count);
                     objects.Add(obj);
                     obj.transform.position = new Vector3(x, y, z);
+                    tree.Add(obj, obj.transform.position);
                 }
             }
         }

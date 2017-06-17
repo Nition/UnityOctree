@@ -113,31 +113,29 @@ public class LooseOctree<T> where T : class
     {
         OctreeNode parentNode = nodes[locationCode];
         OctreeNode thisNode = nodes[ChildCode(locationCode, index)];
-        //-X,-Y,+Z = 0+4+0=4
-        //+X,-Y,+Z = 1+4+0=5
-        //+X,+Y,+Z = 1+0+0=1
-        //-X,+Y,+Z = 0+0+0=0
-        //-X,+Y,-Z = 0+0+2=2
-        //+X,+Y,-Z = 1+0+2=3
-        //+X,-Y,-Z = 1+4+2=7
-        //-X,-Y,-Z = 0+4+2=6
-
-
+        //-X,-Y,+Z = 0+4+2=6
+        //+X,-Y,+Z = 1+4+2=7
+        //+X,+Y,+Z = 1+0+2=3
+        //-X,+Y,+Z = 0+0+2=2
+        //-X,+Y,-Z = 0+0+0=0
+        //+X,+Y,-Z = 1+0+0=1
+        //+X,-Y,-Z = 1+4+0=5
+        //-X,-Y,-Z = 0+4+0=4
 
         float quarter = parentNode.baseBounds.extents.x / 2F;
         Vector3 pos = new Vector3();
         if (index == 4U || index == 5U || index == 7U || index == 6U)
-            pos.y = -quarter; //Bottom
+            pos.y = -quarter;
         if (index == 4U || index == 5U || index == 1U || index == 0U)
-            pos.z = quarter;  //Front
+            pos.z = -quarter;
         if (index == 2U || index == 3U || index == 7U || index == 6U)
-            pos.z = -quarter; //Back
+            pos.z = quarter;
         if (index == 1U || index == 0U || index == 2U || index == 3U)
-            pos.y = quarter;  //Top
+            pos.y = quarter;
         if (index == 4U || index == 0U || index == 2U || index == 6U)
-            pos.x = -quarter; //Left
+            pos.x = -quarter;
         if (index == 5U || index == 1U || index == 3U || index == 7U)
-            pos.x = quarter;  //Right
+            pos.x = quarter;
 
         Bounds bounds = new Bounds(parentNode.baseBounds.center + pos, parentNode.baseBounds.extents);
         Bounds actualBounds = bounds;
@@ -145,7 +143,7 @@ public class LooseOctree<T> where T : class
         //Modify our local copy of the node
         thisNode.actualBounds = actualBounds;
         thisNode.baseBounds = bounds;
-        nodes[ChildCode(locationCode, index)] = thisNode;//Place the child back in the dictionary
+        nodes[ChildCode(locationCode, index)] = thisNode; //Place the child back in the dictionary
     }
     //Split this node into 8 children
     private bool Split(uint locationCode)
@@ -159,12 +157,29 @@ public class LooseOctree<T> where T : class
 
         for (uint i = 0U; i < 8U; i++)
         {
-            if (!AddChild(orgNode.locationCode, i))
+            if (!AddChild(locationCode, i))
                 return false;
         }
         SetAllChildBounds(locationCode, false);
         orgNode.isLeaf = false; //We are now a branch, not a leaf
         nodes[orgNode.locationCode] = orgNode;//Put our original node back
+        if(orgNode.objects.Count >= numObjectsAllowed) //We have objects that need to be distributed
+        {
+            List<OctreeObject> removals = new List<OctreeObject>();
+            foreach(OctreeObject obj in orgNode.objects)
+            {
+                uint index = BestFitChild(locationCode, obj.bounds);
+                if (!Encapsulates(nodes[ChildCode(locationCode, index)].actualBounds, obj.bounds))
+                    continue;
+                nodes[ChildCode(locationCode, index)].objects.Add(obj);
+                obj.locationCode = ChildCode(locationCode, index);
+                removals.Add(obj);
+            }
+            foreach (OctreeObject obj in removals)
+            {
+                orgNode.objects.Remove(obj);
+            }
+        }
         return true;
     }
 
@@ -183,7 +198,7 @@ public class LooseOctree<T> where T : class
         int count = 0;
         while (!TryAddObj(newObj))
         {
-            Grow(bounds.center - nodes[1U].baseBounds.center);
+            //Grow(bounds.center - nodes[1U].baseBounds.center);
             if (++count > 20)
             {
                 Debug.LogError("Aborted Add operation as it seemed to be going on forever (" + (count - 1) + ") attempts at growing the octree.");
@@ -194,13 +209,12 @@ public class LooseOctree<T> where T : class
 
         return newObj;
     }
-
     private bool TryAddObj(OctreeObject newObj)
     {
         uint checkLocation = 1U; //locationCode of checkNode
         OctreeNode checkNode; //Node we are currently trying to check
-        OctreeNode tryNode; //Our last successful check of a node before we break
-
+        uint tryLocation=0U; //Our last successful check of a node before we break
+        bool found = false;
         //Keep searching down the tree until we find a node with space, or a leaf node that we can split
         while (nodes.TryGetValue(checkLocation, out checkNode))
         { //Search through all children for somewhere to fit the object
@@ -209,23 +223,39 @@ public class LooseOctree<T> where T : class
 
             if (checkNode.isLeaf == true)
             { //End of the branch. Stop looking.
-                tryNode = checkNode;
+                tryLocation = checkLocation;
                 break;
             }
 
             if (checkNode.objects.Count < numObjectsAllowed)
             {//This node has space. Stop looking.
-                tryNode = checkNode;
+                tryLocation = checkLocation;
                 break;
             }
 
             uint index = BestFitChild(checkLocation, newObj.bounds); //Find most likely child
             checkLocation = ChildCode(checkLocation, index); //Step into child node
-            tryNode = checkNode;
         }
 
+        if (tryLocation == 0U)
+        {
+            Debug.LogError("TryAddObj failed without finding a location. Something went wrong.");
+            return false; //Nothing found
+        }
 
+        if(nodes[tryLocation].objects.Count >= numObjectsAllowed)
+        {
+            Split(tryLocation);
+            uint index = BestFitChild(tryLocation, newObj.bounds);
+            if(!Encapsulates(nodes[ChildCode(tryLocation,index)].actualBounds,newObj.bounds))
+                return false; //Doesn't fit into new children
+            nodes[ChildCode(tryLocation, index)].objects.Add(newObj);
+            newObj.locationCode = ChildCode(tryLocation, index);
+            return true;
+        }
 
+        Debug.Log("Adding object to: " + GetStringCode(tryLocation));
+        nodes[tryLocation].objects.Add(newObj);
         return true;
     }
 
@@ -263,6 +293,10 @@ public class LooseOctree<T> where T : class
             float tintVal = GetDepth(node.Key) / 7F; // Will eventually get values > 1. Color rounds to 1 automatically
             Gizmos.color = new Color(tintVal, GetIndex(node.Key) / 7F, 1.0f - tintVal);
             Gizmos.DrawWireCube(node.Value.actualBounds.center, node.Value.actualBounds.extents * 2F);
+            foreach(OctreeObject obj in node.Value.objects)
+            {
+                Gizmos.DrawWireCube(obj.bounds.center, obj.bounds.extents * 2F);
+            }
         }
         Gizmos.color = Color.white;
     }
