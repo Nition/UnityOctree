@@ -1,41 +1,102 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
-public class OctreeTest : MonoBehaviour
+using System.Diagnostics;
+namespace UnityOctree
 {
-
-    LooseOctree<GameObject> tree = null;
-    List<GameObject> objects = new List<GameObject>();
-    // Use this for initialization
-    void Start()
+    public class OctreeTest : MonoBehaviour
     {
-        tree = new LooseOctree<GameObject>(200F, Vector3.zero, 1.25F);
-        int count = 0;
-        for (int x = -100; x <= 100; x += 5)
+
+        public UnityEngine.UI.Text iterationsDisplay;
+        public UnityEngine.UI.Text totalTimeDisplay;
+        public UnityEngine.UI.Text averageTimeDisplay;
+        public UnityEngine.UI.Text numObjectsDisplay;
+        public UnityEngine.UI.Text numNodesDisplay;
+        public bool drawNodes;
+        public bool drawConnections;
+        public bool drawObjects;
+
+        LooseOctree<GameObject> tree = null;
+        List<Vector3> positions = new List<Vector3>();
+        // Use this for initialization
+        void Start()
         {
-            for (int y = -100; y <= 100; y += 5)
             {
-                for (int z = -100; z <= 100; z += 5)
+                for (int x = -99; x <= 99; x += 3)
                 {
-                    count++;
-                    GameObject obj = new GameObject("TestObject" + count);
-                    objects.Add(obj);
-                    obj.transform.position = new Vector3(x, y, z);
-                    tree.Add(obj, obj.transform.position);
+                    for (int y = -99; y <= 99; y += 3)
+                    {
+                        for (int z = -99; z <= 99; z += 3)
+                        {
+                            positions.Add(new Vector3(x, y, z));
+                        }
+                    }
+                }
+
+            }
+            numObjectsDisplay.text = "Objects in tree: " + positions.Count;
+            Stopwatch timer = Stopwatch.StartNew();
+            float[] results = new float[4];
+            float total = 0;
+            iterationsDisplay.text = "Iterations: " + results.Length;
+            tree = null;
+            System.GC.Collect();
+            tree = new LooseOctree<GameObject>(200F, Vector3.zero, 1.25F);
+            timer.Start();
+            PopulateTree();
+            timer.Stop();
+            results[0] = timer.ElapsedMilliseconds;
+            timer.Reset();
+            total += results[0];
+            numNodesDisplay.text = "Nodes: " + tree.NodeCount();
+            totalTimeDisplay.text = "Total time: " + total + "ms";
+            averageTimeDisplay.text = "Average time: " + total / results.Length + "ms";
+            tree = null;
+            System.GC.Collect();
+            tree = new LooseOctree<GameObject>(200F, Vector3.zero, 1.25F);
+            StartCoroutine(PopulateTreeSlow());
+        }
+
+        IEnumerator PopulateTreeSlow()
+        {
+            int count = 0;
+            int thisRun = 0;
+            GameObject obj = new GameObject("Dummy");
+            foreach (Vector3 pos in positions)
+            {
+                count++;
+                thisRun++;
+                tree.Add(obj, pos);
+                if (thisRun == 500)
+                {
+                    thisRun = 0;
+                    yield return new WaitForEndOfFrame();
                 }
             }
         }
-    }
 
-    private void OnDrawGizmos()
-    {
-        if (tree != null)
-            tree.DrawAllNodes();
-    }
-    // Update is called once per frame
-    void Update()
-    {
+        void PopulateTree()
+        {
+            int count = 0;
+            int thisRun = 0;
+            GameObject obj = new GameObject("Dummy");
+            foreach (Vector3 pos in positions)
+            {
+                count++;
+                thisRun++;
+                tree.Add(obj, pos);
+            }
+        }
 
+        private void OnDrawGizmos()
+        {
+            if (tree != null)
+                tree.DrawAll(drawNodes, drawObjects, drawConnections);
+        }
+        // Update is called once per frame
+        void Update()
+        {
+
+        }
     }
 }
