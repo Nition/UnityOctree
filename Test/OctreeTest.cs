@@ -17,16 +17,17 @@ namespace UnityOctree
         public bool drawObjects;
 
         LooseOctree<GameObject> tree = null;
+        List<LooseOctree<GameObject>.OctreeObject> treeObj = new List<LooseOctree<GameObject>.OctreeObject>();
         List<Vector3> positions = new List<Vector3>();
         // Use this for initialization
         void Start()
         {
             {
-                for (int x = -99; x <= 99; x += 3)
+                for (int x = -99; x <= 99; x += 30)
                 {
-                    for (int y = -99; y <= 99; y += 3)
+                    for (int y = -99; y <= 99; y += 30)
                     {
-                        for (int z = -99; z <= 99; z += 3)
+                        for (int z = -99; z <= 99; z += 30)
                         {
                             positions.Add(new Vector3(x, y, z));
                         }
@@ -35,28 +36,32 @@ namespace UnityOctree
 
             }
             numObjectsDisplay.text = "Objects in tree: " + positions.Count;
-            Stopwatch timer = Stopwatch.StartNew();
             float[] results = new float[4];
             float total = 0;
             iterationsDisplay.text = "Iterations: " + results.Length;
-            tree = null;
-            System.GC.Collect();
             tree = new LooseOctree<GameObject>(200F, Vector3.zero, 1.25F);
-            timer.Start();
-            PopulateTree();
-            timer.Stop();
-            results[0] = timer.ElapsedMilliseconds;
-            timer.Reset();
-            total += results[0];
+            Stopwatch timer = new Stopwatch();
+            for (int i = 0; i < results.Length; i++)
+            {
+                treeObj.Clear();
+                timer.Reset();
+                timer.Start();
+                PopulateTree();
+                timer.Stop();
+                results[i] = timer.ElapsedMilliseconds;
+                timer.Reset();
+                total += results[0];
+            }
             numNodesDisplay.text = "Nodes: " + tree.NodeCount();
             totalTimeDisplay.text = "Total time: " + total + "ms";
             averageTimeDisplay.text = "Average time: " + total / results.Length + "ms";
+
+            tree.Print();
             tree = null;
-            System.GC.Collect();
+            treeObj.Clear();
             tree = new LooseOctree<GameObject>(200F, Vector3.zero, 1.25F);
             StartCoroutine(PopulateTreeSlow());
         }
-
         IEnumerator PopulateTreeSlow()
         {
             int count = 0;
@@ -66,11 +71,28 @@ namespace UnityOctree
             {
                 count++;
                 thisRun++;
-                tree.Add(obj, pos);
-                if (thisRun == 500)
+                treeObj.Add(tree.Add(obj, pos));
+                if (thisRun == 100)
                 {
                     thisRun = 0;
                     yield return new WaitForEndOfFrame();
+                }
+            }
+            List<LooseOctree<GameObject>.OctreeObject> removals = new List<LooseOctree<GameObject>.OctreeObject>();
+            while (treeObj.Count > 0)
+            {
+                foreach (LooseOctree<GameObject>.OctreeObject obje in treeObj)
+                {
+                    if (Random.Range(0, 100) > 50)
+                    {
+                        obje.Remove();
+                        removals.Add(obje);
+                    }
+                    yield return new WaitForSeconds(0.1F);
+                }
+                foreach (LooseOctree<GameObject>.OctreeObject obje in removals)
+                {
+                    treeObj.Remove(obje);
                 }
             }
         }
@@ -84,7 +106,14 @@ namespace UnityOctree
             {
                 count++;
                 thisRun++;
-                tree.Add(obj, pos);
+                treeObj.Add(tree.Add(obj, pos));
+            }
+            foreach (LooseOctree<GameObject>.OctreeObject obje in treeObj)
+            {
+                if (Random.Range(0, 100) > 50)
+                {
+                    obje.Remove();
+                }
             }
         }
 

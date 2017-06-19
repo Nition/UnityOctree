@@ -5,32 +5,14 @@ namespace UnityOctree
 {
     public partial class LooseOctree<T> where T : class
     {
-        //Using a struct would likely be faster here, but
-        //it makes the code less readable and has performance considerations when passing them around
         private partial class OctreeNode
         {
             public uint locationCode;
-            private Bounds _actualBounds;
-            public Bounds actualBounds
-            {
-                get { return _actualBounds; }
-                set //Cache these values as constantly calling unity's getter methods can be a bit slow
-                {
-                    _actualBounds = value;
-                    actualMaxBounds = _actualBounds.max;
-                    actualMinBounds = _actualBounds.min;
-                    actualCenter = _actualBounds.center;
-                    actualSize = new Vector3(_actualBounds.extents.x * 2F, _actualBounds.extents.y * 2F, _actualBounds.extents.z * 2F);
-                }
-            }
-            public Vector3 actualSize;
-            public Vector3 actualCenter;
-            public Vector3 actualMinBounds;
-            public Vector3 actualMaxBounds;
-
+            public FastBounds actualBounds;
             public bool isLeaf; //Leaf nodes have no children
-            public List<OctreeObject> objects;
             LooseOctree<T> tree;
+            public List<OctreeObject> objects;
+            public uint childExists = 0;
             public OctreeNode(uint locationCode, LooseOctree<T> tree)
             {
                 this.objects = new List<OctreeObject>();
@@ -55,13 +37,34 @@ namespace UnityOctree
                 }
                 OctreeNode newNode = new OctreeNode(newCode, tree);
                 tree.nodes[newCode] = newNode; //Record in dictionary
+                SetChildBounds(newNode);
+                childExists = SetChild(childExists, index);
+                isLeaf = false;
+                for (int i = 0; i < objects.Count; i++)
+                {
+                    OctreeObject obj = objects[i];
+                    if (BestFitChild(obj) == index)
+                    {
+                        if (newNode.TryAddObj(obj))
+                        {
+                            obj.locationCode = newCode;
+                            removals.Add(obj);
+                            newNode.objects.Add(obj);
+                        }
+                    }
+                }
+                for (int i = 0; i < removals.Count; i++)
+                {
+                    objects.Remove(removals[i]);
+                }
+                removals.Clear();
                 return true;
             }
 
             uint BestFitChild(OctreeObject obj)
             {
-                Vector3 center = actualCenter;
-                Vector3 objCenter = obj.center;
+                Vector3 center = actualBounds.center;
+                Vector3 objCenter = obj.bounds.center;
                 return (objCenter.x <= center.x ? 0U : 1U) + (objCenter.y >= center.y ? 0U : 4U) + (objCenter.z <= center.z ? 0U : 2U);
             }
 
@@ -71,19 +74,19 @@ namespace UnityOctree
             /// </summary>
             public bool TryAddObj(OctreeObject newObj)
             {
-                if (!Encapsulates(actualMinBounds, actualMaxBounds, newObj.minBounds, newObj.maxBounds))
-                    return false; //Doesn't fit in this node
+                if (!actualBounds.ContainsBounds(newObj.bounds))
+                    return false;
 
-                if (isLeaf)
-                { //This is a leaf, check if we need to split
-                    if (objects.Count >= numObjectsAllowed)
-                        Split();
+                uint index = BestFitChild(newObj); //Find most likely child
+                uint childCode = ChildCode(locationCode, index);
+                if (objects.Count >= numObjectsAllowed && !CheckChild(childExists, index))
+                { //We're at or over the limit. Split into a new node
+                    AddChild(index);
                 }
 
-                if (!isLeaf)
-                { //If not, try adding the object to a child
-                    uint index = BestFitChild(newObj); //Find most likely child
-                    if (tree.nodes[ChildCode(locationCode, index)].TryAddObj(newObj)) //Try to place object in child
+                if (!isLeaf && CheckChild(childExists,index))
+                { //We are in a non-leaf node and we have a child. Try putting it there
+                    if (tree.nodes[childCode].TryAddObj(newObj))
                         return true;
                 }
 
@@ -100,10 +103,10 @@ namespace UnityOctree
             {
                 for (uint i = 0; i < 8U; i++)
                 {
-                    SetChildBounds(i); //Set bounds of each of this node's children
+                    OctreeNode childNode = tree.nodes[ChildCode(locationCode, i)];
+                    SetChildBounds(childNode); //Set bounds of each of this node's children
                     if (recursive)
                     {
-                        OctreeNode childNode = tree.nodes[ChildCode(locationCode, i)];
                         if (!childNode.isLeaf) //Don't recurse into leaf nodes. They have no children to set
                             childNode.SetAllChildBounds(true);//Recursive resize. Keep dropping down
                     }
@@ -111,9 +114,9 @@ namespace UnityOctree
             }
 
             //Re-set the bounds of child at index
-            private void SetChildBounds(uint index)
+            private void SetChildBounds(OctreeNode childNode)
             {
-                OctreeNode childNode = tree.nodes[ChildCode(locationCode, index)];
+                uint index = GetIndex(childNode.locationCode);
                 //-X,-Y,+Z = 0+4+2=6
                 //+X,-Y,+Z = 1+4+2=7
                 //+X,+Y,+Z = 1+0+2=3
@@ -138,8 +141,44 @@ namespace UnityOctree
                     pos.x = quarter;
                 float baseSize = (actualBounds.size.x / tree.looseness) / 2F;
                 float looseSize = baseSize * tree.looseness;
-                Bounds childBounds = new Bounds(actualCenter + pos, new Vector3(looseSize, looseSize, looseSize));
+                FastBounds childBounds = new FastBounds(actualBounds.center + pos, new Vector3(looseSize, looseSize, looseSize));
                 childNode.actualBounds = childBounds;
+            }
+
+            public bool RemoveObject(OctreeObject obj)
+            {
+                if (objects.Remove(obj))
+                {
+                    if (!MergeIfPossible() && locationCode != 1U) //If we can't merge and we aren't root, check if our parent can
+                        tree.nodes[ParentCode(locationCode)].MergeIfPossible();
+
+                    return true;
+                }
+                return false;
+            }
+
+            private bool MergeIfPossible()
+            {
+                return false;
+            }
+            List<uint> childCodes = new List<uint>();
+            /// <summary>
+            /// Returns a list of every node below this one
+            /// </summary>
+            public bool GetAllChildCodes(uint startingLocation, List<uint> childCodes)
+            {
+                if (GetDepth(startingLocation) == maxDepth)
+                    return false;
+                for (uint i = 0; i < 8; i++)
+                {
+                    uint childCode = ChildCode(startingLocation, i);
+                    childCodes.Add(childCode);
+                    GetAllChildCodes(childCode, childCodes);
+                }
+                if (childCodes.Count > 0)
+                    return true;
+
+                return false;
             }
 
             List<OctreeObject> removals = new List<OctreeObject>();
@@ -172,8 +211,8 @@ namespace UnityOctree
                         OctreeObject obj = objects[i];
                         uint index = BestFitChild(obj);
                         OctreeNode childNode = tree.nodes[ChildCode(locationCode, index)];
-                        if (!Encapsulates(childNode.actualMinBounds, childNode.actualMaxBounds, obj.minBounds, obj.maxBounds))
-                            continue;
+                        if (!childNode.actualBounds.ContainsBounds(obj.bounds))
+                            continue; //Doesn't fit here. Can't move it
                         childNode.objects.Add(obj);
                         obj.locationCode = childNode.locationCode;
                         removals.Add(obj);

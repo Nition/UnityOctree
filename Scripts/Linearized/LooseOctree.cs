@@ -15,16 +15,14 @@ namespace UnityOctree
                                          //With a 32 bit integer we can hold a depth of 10. With a 64 bit we can hold 21
         readonly float looseness;
         readonly float initialSize;
-
         //Maps node to their location in the tree. Where key is the location and value is the node.
         Dictionary<uint, OctreeNode> nodes;
-
         public LooseOctree(float initialSize, Vector3 initialWorldPosition, float loosenessVal)
         {
             nodes = new Dictionary<uint, OctreeNode>();
             this.initialSize = initialSize;
             this.looseness = Mathf.Clamp(loosenessVal, 1.0F, 2.0F);
-            Bounds newBounds = new Bounds(initialWorldPosition, Vector3.one * initialSize * looseness);
+            FastBounds newBounds = new FastBounds(initialWorldPosition, Vector3.one * initialSize * looseness);
             OctreeNode root = new OctreeNode(1U, this);
             root.actualBounds = newBounds;
             nodes[1U] = root;
@@ -32,7 +30,12 @@ namespace UnityOctree
 
         public int NodeCount()
         {
-            return nodes.Count;
+            int count = 0;
+            foreach (KeyValuePair<uint, OctreeNode> node in nodes)
+            {
+                count++;
+            }
+            return count;
         }
         private void Grow(Vector3 direction)
         {
@@ -43,8 +46,8 @@ namespace UnityOctree
             float half = rootNode.actualBounds.size.x / 2F / looseness;
             float newLength = half * 4;
             //Resize the root
-            Vector3 newCenter = rootNode.actualCenter + new Vector3(xDirection * half, yDirection * half, zDirection * half);
-            Bounds newBounds = new Bounds(newCenter, new Vector3(newLength * looseness, newLength * looseness, newLength * looseness));
+            Vector3 newCenter = rootNode.actualBounds.center + new Vector3(xDirection * half, yDirection * half, zDirection * half);
+            FastBounds newBounds = new FastBounds(newCenter, new Vector3(newLength * looseness, newLength * looseness, newLength * looseness));
             rootNode.actualBounds = newBounds;
             //Resize all elements
             for (uint i = 0; i < 7U; i++)
@@ -56,7 +59,7 @@ namespace UnityOctree
 
         public OctreeObject Add(T obj, Vector3 position)
         {
-            Bounds bounds = new Bounds(position, new Vector3(Mathf.Epsilon, Mathf.Epsilon, Mathf.Epsilon));
+            FastBounds bounds = new FastBounds(position, new Vector3(0F, 0F, 0F));
             OctreeObject newObj = Add(obj, bounds);
             newObj.isPoint = true;
             return newObj;
@@ -64,7 +67,12 @@ namespace UnityOctree
 
         public OctreeObject Add(T obj, Bounds bounds)
         {
-            OctreeObject newObj = new OctreeObject();
+            return Add(obj, new FastBounds(bounds));
+        }
+
+        public OctreeObject Add(T obj, FastBounds bounds)
+        {
+            OctreeObject newObj = new OctreeObject(this);
             newObj.obj = obj;
             newObj.bounds = bounds;
             int count = 0;
@@ -102,21 +110,35 @@ namespace UnityOctree
 
             return allObjects;
         }
+        public void Print()
+        {
+            Debug.Log("---------------------------------------------------------------------------");
+            foreach (KeyValuePair<uint, OctreeNode> node in nodes)
+            {
+                Debug.LogFormat("| --- Node: Depth({0}) --- Location(X{1} Y{2} Z{3}) --- Size({4}) --- Index({5}) --- |Objects({6}) --- |", GetDepth(node.Key), node.Value.actualBounds.center.x, node.Value.actualBounds.center.y, node.Value.actualBounds.center.z, node.Value.actualBounds.size.x, GetIndex(node.Key), node.Value.objects.Count);
+            }
+            Debug.Log("---------------------------------------------------------------------------");
+        }
         public void DrawAll(bool drawNodes, bool drawObjects, bool drawConnections)
         {
             foreach (KeyValuePair<uint, OctreeNode> node in nodes)
             {
                 float tintVal = GetDepth(node.Key) / 7F; // Will eventually get values > 1. Color rounds to 1 automatically
-                Gizmos.color = new Color(tintVal, GetIndex(node.Key) / 7F, 1.0f - tintVal);
+                Gizmos.color = new Color(tintVal, 0F, 1.0f - tintVal);
                 if (drawNodes)
-                    Gizmos.DrawWireCube(node.Value.actualCenter, node.Value.actualSize);
+                    Gizmos.DrawWireCube(node.Value.actualBounds.center, node.Value.actualBounds.size);
+                Gizmos.color = new Color(tintVal, GetIndex(node.Key) / 7F, 1.0f - tintVal);
                 foreach (OctreeObject obj in node.Value.objects)
                 {
-                    float size = Mathf.Max(obj.size.x, 0.25F);
                     if (drawObjects)
-                        Gizmos.DrawCube(obj.center, new Vector3(size, size, size));
+                    {
+                        if (obj.isPoint)
+                            Gizmos.DrawSphere(obj.bounds.center, 0.25F);
+                        else
+                            Gizmos.DrawCube(obj.bounds.center, obj.bounds.size);
+                    }
                     if (drawConnections)
-                        Gizmos.DrawLine(node.Value.actualCenter, obj.center);
+                        Gizmos.DrawLine(node.Value.actualBounds.center, obj.bounds.center);
                 }
             }
             Gizmos.color = Color.white;
