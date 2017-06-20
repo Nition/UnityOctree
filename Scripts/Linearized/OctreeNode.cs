@@ -5,23 +5,22 @@ namespace UnityOctree
 {
     public partial class LooseOctree<T> where T : class
     {
-        private partial class OctreeNode
+        public partial class OctreeNode
         {
             public uint locationCode;
             public FastBounds actualBounds;
-            public bool isLeaf; //Leaf nodes have no children
+            public bool isLeaf = true; //Leaf nodes have no children
             LooseOctree<T> tree;
-            public List<OctreeObject> objects;
-            public uint childExists = 0;
-            public OctreeNode(uint locationCode, LooseOctree<T> tree)
+            public List<OctreeObject> objects = new List<OctreeObject>();
+            public int childExists = 0; //Bitmask for child nodes
+            public void Initialize(uint locationCode, LooseOctree<T> tree)
             {
-                this.objects = new List<OctreeObject>();
                 this.locationCode = locationCode;
-                this.isLeaf = true;
                 this.tree = tree;
             }
 
-            //Adds a blank child node at index
+            Queue<OctreeObject> removals = new Queue<OctreeObject>();
+            //Adds a child node at index. If any existing objects fit, moves them into it
             private bool AddChild(uint index)
             {
                 if (index > 7U)
@@ -29,35 +28,32 @@ namespace UnityOctree
                     Debug.LogError("AddChild index must be 0-7");
                     return false;
                 }
-                uint newCode = ChildCode(locationCode, index);
-                if (tree.nodes.ContainsKey(newCode))
+                if (CheckChild(childExists, index))
                 {
-                    Debug.LogError("Location code already assigned: " + GetStringCode(newCode) + "(" + newCode + ")");
+                    Debug.LogError("This child already exists: " + index + ".");
                     return false;
                 }
-                OctreeNode newNode = new OctreeNode(newCode, tree);
-                tree.nodes[newCode] = newNode; //Record in dictionary
+                uint newCode = ChildCode(locationCode, index);
+                OctreeNode newNode = tree.nodePool.Pop();
+                newNode.Initialize(newCode, tree);
+                tree.nodes[newCode] = newNode;
                 SetChildBounds(newNode);
-                childExists = SetChild(childExists, index);
+                childExists = SetChild(childExists, index); //Set flag
                 isLeaf = false;
-                for (int i = 0; i < objects.Count; i++)
+                int objCount = objects.Count;
+                if (objCount > 0)
                 {
-                    OctreeObject obj = objects[i];
-                    if (BestFitChild(obj) == index)
+                    for (int i = 0; i < objCount; i++)
                     {
-                        if (newNode.TryAddObj(obj))
-                        {
-                            obj.locationCode = newCode;
-                            removals.Add(obj);
-                            newNode.objects.Add(obj);
-                        }
+                        OctreeObject obj = objects[i];
+                        if (BestFitChild(obj) == index)
+                            if (newNode.TryAddObj(obj)) //Make sure the object fits in the new location
+                                removals.Enqueue(obj);
                     }
+                    while(removals.Count > 0)
+                        objects.Remove(removals.Dequeue());
+
                 }
-                for (int i = 0; i < removals.Count; i++)
-                {
-                    objects.Remove(removals[i]);
-                }
-                removals.Clear();
                 return true;
             }
 
@@ -80,21 +76,16 @@ namespace UnityOctree
                 uint index = BestFitChild(newObj); //Find most likely child
                 uint childCode = ChildCode(locationCode, index);
                 if (objects.Count >= numObjectsAllowed && !CheckChild(childExists, index))
-                { //We're at or over the limit. Split into a new node
-                    AddChild(index);
-                }
+                    AddChild(index); //We're at or over the limit. Split into a new node if it doesn't exist.
 
-                if (!isLeaf && CheckChild(childExists,index))
-                { //We are in a non-leaf node and we have a child. Try putting it there
+                if (!isLeaf && CheckChild(childExists, index))
+                { //We are in a non-leaf node and we have a suitable child. Try putting it there
                     if (tree.nodes[childCode].TryAddObj(newObj))
                         return true;
                 }
 
                 //Object didn't fit in children. Put it here.
-                //This may make us go over numObjectsAllowed, but it's the easiest
-                //way to handle objects on borders.
-
-                newObj.locationCode = locationCode;
+                newObj.SetNode(this);
                 objects.Add(newObj);
                 return true;
             }
@@ -103,7 +94,8 @@ namespace UnityOctree
             {
                 for (uint i = 0; i < 8U; i++)
                 {
-                    OctreeNode childNode = tree.nodes[ChildCode(locationCode, i)];
+                    uint childCode = ChildCode(locationCode, i);
+                    OctreeNode childNode = tree.nodes[childCode];
                     SetChildBounds(childNode); //Set bounds of each of this node's children
                     if (recursive)
                     {
@@ -125,21 +117,21 @@ namespace UnityOctree
                 //+X,+Y,-Z = 1+0+0=1
                 //+X,-Y,-Z = 1+4+0=5
                 //-X,-Y,-Z = 0+4+0=4
-                float quarter = (actualBounds.size.x / tree.looseness) / 4F;
+                float quarter = (actualBounds.size.x / tree.looseness) * .25F;
                 Vector3 pos = new Vector3();
                 if (index == 4U || index == 5U || index == 7U || index == 6U)
                     pos.y = -quarter;
+                else//if (index == 1U || index == 0U || index == 2U || index == 3U)
+                    pos.y = quarter;
                 if (index == 4U || index == 5U || index == 1U || index == 0U)
                     pos.z = -quarter;
-                if (index == 2U || index == 3U || index == 7U || index == 6U)
+                else//if (index == 2U || index == 3U || index == 7U || index == 6U)
                     pos.z = quarter;
-                if (index == 1U || index == 0U || index == 2U || index == 3U)
-                    pos.y = quarter;
                 if (index == 4U || index == 0U || index == 2U || index == 6U)
                     pos.x = -quarter;
-                if (index == 5U || index == 1U || index == 3U || index == 7U)
+                else//if (index == 5U || index == 1U || index == 3U || index == 7U)
                     pos.x = quarter;
-                float baseSize = (actualBounds.size.x / tree.looseness) / 2F;
+                float baseSize = (actualBounds.size.x / tree.looseness) * .5F;
                 float looseSize = baseSize * tree.looseness;
                 FastBounds childBounds = new FastBounds(actualBounds.center + pos, new Vector3(looseSize, looseSize, looseSize));
                 childNode.actualBounds = childBounds;
@@ -147,19 +139,24 @@ namespace UnityOctree
 
             public bool RemoveObject(OctreeObject obj)
             {
+                bool removed = false;
                 if (objects.Remove(obj))
                 {
                     if (!MergeIfPossible() && locationCode != 1U) //If we can't merge and we aren't root, check if our parent can
-                        tree.nodes[ParentCode(locationCode)].MergeIfPossible();
-
-                    return true;
+                    {
+                        uint parentCode = ParentCode(locationCode);
+                        tree.nodes[parentCode].MergeIfPossible();
+                    }
+                    removed = true;
                 }
-                return false;
+
+                tree.objectPool.Push(obj);
+                return removed;
             }
 
             private bool MergeIfPossible()
             {
-                return false;
+                return true;
             }
             List<uint> childCodes = new List<uint>();
             /// <summary>
@@ -179,55 +176,6 @@ namespace UnityOctree
                     return true;
 
                 return false;
-            }
-
-            List<OctreeObject> removals = new List<OctreeObject>();
-            //Split this node into 8 children
-            public bool Split()
-            {
-                if (GetDepth(locationCode) == maxDepth)
-                { //We're maxed out on depth. Let's raise the max allowance and re-add our objects
-                    Debug.LogWarning("Octree depth has reached the limit (" + maxDepth + "). Increasing max number of objects from " + numObjectsAllowed + " to " + numObjectsAllowed + 1 + ".");
-                    numObjectsAllowed++;
-                    foreach (OctreeObject obj in tree.GetAllObjects(true))
-                    {//Take all objects out of the tree and re-distribute them.
-                        tree.nodes[1U].TryAddObj(obj); //Add from the top
-                    }
-                    return false;
-                }
-
-                for (uint i = 0U; i < 8U; i++)
-                {
-                    if (!AddChild(i))
-                        return false;
-                }
-                SetAllChildBounds(false);
-                isLeaf = false; //We are now a branch, not a leaf
-                int objCount = objects.Count;
-                if (objCount > 0) //We have objects that need to be distributed
-                {
-                    for (int i = 0; i < objCount; i++)
-                    {
-                        OctreeObject obj = objects[i];
-                        uint index = BestFitChild(obj);
-                        OctreeNode childNode = tree.nodes[ChildCode(locationCode, index)];
-                        if (!childNode.actualBounds.ContainsBounds(obj.bounds))
-                            continue; //Doesn't fit here. Can't move it
-                        childNode.objects.Add(obj);
-                        obj.locationCode = childNode.locationCode;
-                        removals.Add(obj);
-                    }
-                    int removalCount = removals.Count;
-                    if (removalCount > 0)
-                    {
-                        for (int i = 0; i < removalCount; i++)
-                        {
-                            objects.Remove(removals[i]);
-                        }
-                        removals.Clear();
-                    }
-                }
-                return true;
             }
         }
     }

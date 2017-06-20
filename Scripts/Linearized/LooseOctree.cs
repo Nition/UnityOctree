@@ -15,35 +15,35 @@ namespace UnityOctree
                                          //With a 32 bit integer we can hold a depth of 10. With a 64 bit we can hold 21
         readonly float looseness;
         readonly float initialSize;
-        //Maps node to their location in the tree. Where key is the location and value is the node.
-        Dictionary<uint, OctreeNode> nodes;
+        public static uint[] ChildMask = { 1U, 2U, 4U, 8U, 16U, 32U, 64U, 128U };
+        ObjectPool<OctreeNode> nodePool = new ObjectPool<OctreeNode>(5000);
+        ObjectPool<OctreeObject> objectPool = new ObjectPool<OctreeObject>(8000);
+        //Maps node to their location in the tree. Where index is the depth, key is the locationCode, and value is the node instance
+        private Dictionary<uint, OctreeNode> nodes = new Dictionary<uint, OctreeNode>();
+
+        private OctreeNode rootNode; //Keep a ref to the root node so we don't need to keep looking it up. Micro optimization
+
         public LooseOctree(float initialSize, Vector3 initialWorldPosition, float loosenessVal)
         {
-            nodes = new Dictionary<uint, OctreeNode>();
             this.initialSize = initialSize;
             this.looseness = Mathf.Clamp(loosenessVal, 1.0F, 2.0F);
             FastBounds newBounds = new FastBounds(initialWorldPosition, Vector3.one * initialSize * looseness);
-            OctreeNode root = new OctreeNode(1U, this);
-            root.actualBounds = newBounds;
-            nodes[1U] = root;
+            rootNode = nodePool.Pop();
+            rootNode.Initialize(1U, this);
+            rootNode.actualBounds = newBounds;
+            nodes[1U] = rootNode;
         }
 
         public int NodeCount()
         {
-            int count = 0;
-            foreach (KeyValuePair<uint, OctreeNode> node in nodes)
-            {
-                count++;
-            }
-            return count;
+            return nodes.Count;
         }
         private void Grow(Vector3 direction)
         {
             int xDirection = direction.x >= 0 ? 1 : -1;
             int yDirection = direction.y >= 0 ? 1 : -1;
             int zDirection = direction.z >= 0 ? 1 : -1;
-            OctreeNode rootNode = nodes[1U];
-            float half = rootNode.actualBounds.size.x / 2F / looseness;
+            float half = rootNode.actualBounds.size.x * .5F / looseness;
             float newLength = half * 4;
             //Resize the root
             Vector3 newCenter = rootNode.actualBounds.center + new Vector3(xDirection * half, yDirection * half, zDirection * half);
@@ -57,9 +57,10 @@ namespace UnityOctree
 
         }
 
+        Vector3 pointSize = new Vector3(0F, 0F, 0F);
         public OctreeObject Add(T obj, Vector3 position)
         {
-            FastBounds bounds = new FastBounds(position, new Vector3(0F, 0F, 0F));
+            FastBounds bounds = new FastBounds(position, pointSize);
             OctreeObject newObj = Add(obj, bounds);
             newObj.isPoint = true;
             return newObj;
@@ -72,11 +73,11 @@ namespace UnityOctree
 
         public OctreeObject Add(T obj, FastBounds bounds)
         {
-            OctreeObject newObj = new OctreeObject(this);
+            OctreeObject newObj = objectPool.Pop();
             newObj.obj = obj;
             newObj.bounds = bounds;
             int count = 0;
-            while (!nodes[1U].TryAddObj(newObj))
+            while (!rootNode.TryAddObj(newObj))
             {
                 //Grow(newObj.center - nodes[1U].actualCenter);
                 if (++count > 20)
@@ -94,15 +95,16 @@ namespace UnityOctree
         private List<OctreeObject> removals = new List<OctreeObject>();
         public List<OctreeObject> GetAllObjects(bool removeFromNodes)
         {
-            foreach (KeyValuePair<uint, OctreeNode> node in nodes)
-            {
-                foreach (OctreeObject obj in node.Value.objects)
+                foreach (KeyValuePair<uint, OctreeNode> node in nodes)
                 {
-                    allObjects.Add(obj);
-                    if (removeFromNodes)
-                        removals.Add(obj);
+                    foreach (OctreeObject obj in node.Value.objects)
+                    {
+                        allObjects.Add(obj);
+                        if (removeFromNodes)
+                            removals.Add(obj);
+                    }
                 }
-            }
+           
             foreach (OctreeObject obj in removals)
             {
                 obj.Remove();
@@ -113,34 +115,38 @@ namespace UnityOctree
         public void Print()
         {
             Debug.Log("---------------------------------------------------------------------------");
-            foreach (KeyValuePair<uint, OctreeNode> node in nodes)
-            {
-                Debug.LogFormat("| --- Node: Depth({0}) --- Location(X{1} Y{2} Z{3}) --- Size({4}) --- Index({5}) --- |Objects({6}) --- |", GetDepth(node.Key), node.Value.actualBounds.center.x, node.Value.actualBounds.center.y, node.Value.actualBounds.center.z, node.Value.actualBounds.size.x, GetIndex(node.Key), node.Value.objects.Count);
-            }
+
+                foreach (KeyValuePair<uint, OctreeNode> node in nodes)
+                {
+                    Debug.LogFormat("| --- Node: Depth({0}) --- Location(X{1} Y{2} Z{3}) --- Size({4}) --- Index({5}) --- |Objects({6}) --- |", GetDepth(node.Key), node.Value.actualBounds.center.x, node.Value.actualBounds.center.y, node.Value.actualBounds.center.z, node.Value.actualBounds.size.x, GetIndex(node.Key), node.Value.objects.Count);
+                }
+            
             Debug.Log("---------------------------------------------------------------------------");
         }
         public void DrawAll(bool drawNodes, bool drawObjects, bool drawConnections)
         {
-            foreach (KeyValuePair<uint, OctreeNode> node in nodes)
-            {
-                float tintVal = GetDepth(node.Key) / 7F; // Will eventually get values > 1. Color rounds to 1 automatically
-                Gizmos.color = new Color(tintVal, 0F, 1.0f - tintVal);
-                if (drawNodes)
-                    Gizmos.DrawWireCube(node.Value.actualBounds.center, node.Value.actualBounds.size);
-                Gizmos.color = new Color(tintVal, GetIndex(node.Key) / 7F, 1.0f - tintVal);
-                foreach (OctreeObject obj in node.Value.objects)
+
+                foreach (KeyValuePair<uint, OctreeNode> node in nodes)
                 {
-                    if (drawObjects)
+                    float tintVal = GetDepth(node.Key) / 7F; // Will eventually get values > 1. Color rounds to 1 automatically
+                    Gizmos.color = new Color(tintVal, 0F, 1.0f - tintVal);
+                    if (drawNodes)
+                        Gizmos.DrawWireCube(node.Value.actualBounds.center, node.Value.actualBounds.size);
+                    Gizmos.color = new Color(tintVal, GetIndex(node.Key) / 7F, 1.0f - tintVal);
+                    foreach (OctreeObject obj in node.Value.objects)
                     {
-                        if (obj.isPoint)
-                            Gizmos.DrawSphere(obj.bounds.center, 0.25F);
-                        else
-                            Gizmos.DrawCube(obj.bounds.center, obj.bounds.size);
+                        if (drawObjects)
+                        {
+                            if (obj.isPoint)
+                                Gizmos.DrawSphere(obj.bounds.center, 0.25F);
+                            else
+                                Gizmos.DrawCube(obj.bounds.center, obj.bounds.size);
+                        }
+                        if (drawConnections)
+                            Gizmos.DrawLine(node.Value.actualBounds.center, obj.bounds.center);
                     }
-                    if (drawConnections)
-                        Gizmos.DrawLine(node.Value.actualBounds.center, obj.bounds.center);
                 }
-            }
+            
             Gizmos.color = Color.white;
         }
 

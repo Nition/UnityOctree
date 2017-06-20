@@ -3,6 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace UnityOctree
 {
+    //Helper class for external access. Makes syntax a little easier to read
+    //OctreeObject<GameObject> instead of LooseOctree<GameObject>.OctreeObject
+    public class OctreeObject<T>:LooseOctree<T>.OctreeObject  where T : class
+    {
+
+    }
     public partial class LooseOctree<T> where T : class
     {
         public class OctreeObject
@@ -10,17 +16,15 @@ namespace UnityOctree
             public T obj; //Object reference held by this instance
             public FastBounds bounds;
             public bool isPoint; //Point data only, ignore extents
-            private LooseOctree<T> tree;
-            public uint locationCode; //Where in the tree this object is located
+            private OctreeNode node; //Reference to the node this object is held by
 
-           public OctreeObject(LooseOctree<T> tree)
+            public void SetNode(OctreeNode node)
             {
-                this.tree = tree;
+                this.node = node;
             }
-
             public bool Remove()
             {
-                return tree.nodes[locationCode].RemoveObject(this);
+                return node.RemoveObject(this);
             }
         }
     }

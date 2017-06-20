@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using System;
 namespace UnityOctree
 {
     public partial class LooseOctree<T> where T : class
@@ -13,7 +13,7 @@ namespace UnityOctree
         /// <returns></returns>
         private static string GetStringCode(uint locationCode)
         {
-            string name = System.Convert.ToString(locationCode, 2);
+            string name = Convert.ToString(locationCode, 2);
             name = System.Text.RegularExpressions.Regex.Replace(name, ".{3}", "$0 ").Trim();
             return name;
         }
@@ -51,7 +51,7 @@ namespace UnityOctree
         public static uint NextSiblingCode(uint locationCode)
         {
             uint index = GetIndex(locationCode);
-            if (index > 7)
+            if (index == 7U)
             {
                 Debug.LogError("Next sibling index > 7. Wrapping to 0");
                 index = 0U;
@@ -83,29 +83,30 @@ namespace UnityOctree
         /// <returns></returns>
         private static int GetDepth(uint locationCode)
         {
-            for (int d = 0; locationCode > 0; d++)
+            uint start = locationCode;
+            for (int d = 0; locationCode > 0U; d++)
             {
-                if (locationCode == 1)
+                if (locationCode == 1U)
                     return d;
                 locationCode >>= 3;
             }
-            Debug.LogError("Could not find depth of node!");
+            Debug.LogError("Could not find depth of node at index + " + GetIndex(start) + " and position: + " + start + "! Stopped searching at " + locationCode);
             return -1;
         }
-        public static uint SetChild(uint mask, uint index)
+        public static int SetChild(int mask, uint index)
         {
             index++;
-            return mask |= 1U << (int)index;
+            return mask |= 1<<(int)index;
         }
-        public static uint UnsetChild(uint mask, uint index)
+        public static int UnsetChild(int mask, uint index)
         {
             index++;
-            return mask = mask & ~(1U << (int)index);
+            return mask &= ~1<<(int)index;
         }
-        public static bool CheckChild(uint mask, uint index)
+        public static bool CheckChild(int mask, uint index)
         {
             index++;
-            return (mask & (1U << (int)index)) != 0;
+            return (mask & 1<<(int)index) != 0;
         }
         /// <summary>
         /// Returns the parent of the provided locationCode

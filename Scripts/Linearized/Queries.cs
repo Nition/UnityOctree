@@ -46,7 +46,7 @@ namespace UnityOctree
         {
             return true;
         }
-        private partial class OctreeNode
+        public partial class OctreeNode
         {
             /// <summary>
             /// Check if the specified bounds intersect with anything in the tree. See also: GetColliding.

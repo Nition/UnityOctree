@@ -23,11 +23,11 @@ namespace UnityOctree
         void Start()
         {
             {
-                for (int x = -99; x <= 99; x += 30)
+                for (int x = -99; x <= 99; x += 10)
                 {
-                    for (int y = -99; y <= 99; y += 30)
+                    for (int y = -99; y <= 99; y += 10)
                     {
-                        for (int z = -99; z <= 99; z += 30)
+                        for (int z = -99; z <= 99; z += 10)
                         {
                             positions.Add(new Vector3(x, y, z));
                         }
@@ -35,11 +35,11 @@ namespace UnityOctree
                 }
 
             }
-            numObjectsDisplay.text = "Objects in tree: " + positions.Count;
+            numObjectsDisplay.text = "Objects per build: " + positions.Count;
             float[] results = new float[4];
             float total = 0;
             iterationsDisplay.text = "Iterations: " + results.Length;
-            tree = new LooseOctree<GameObject>(200F, Vector3.zero, 1.25F);
+            tree = new LooseOctree<GameObject>(200F, Vector3.zero, 1.0F);
             Stopwatch timer = new Stopwatch();
             for (int i = 0; i < results.Length; i++)
             {
@@ -51,15 +51,16 @@ namespace UnityOctree
                 results[i] = timer.ElapsedMilliseconds;
                 timer.Reset();
                 total += results[0];
+                UnityEngine.Debug.Log("Iteration " + i + " done in " + results[i] + "ms");
             }
-            numNodesDisplay.text = "Nodes: " + tree.NodeCount();
-            totalTimeDisplay.text = "Total time: " + total + "ms";
-            averageTimeDisplay.text = "Average time: " + total / results.Length + "ms";
+            numNodesDisplay.text = "Nodes per build: " + tree.NodeCount();
+            totalTimeDisplay.text = "Total build time: " + total + "ms";
+            averageTimeDisplay.text = "Average build time: " + total / results.Length + "ms";
 
             tree.Print();
             tree = null;
             treeObj.Clear();
-            tree = new LooseOctree<GameObject>(200F, Vector3.zero, 1.25F);
+            tree = new LooseOctree<GameObject>(200F, Vector3.zero, 1.0F);
             StartCoroutine(PopulateTreeSlow());
         }
         IEnumerator PopulateTreeSlow()
@@ -72,7 +73,7 @@ namespace UnityOctree
                 count++;
                 thisRun++;
                 treeObj.Add(tree.Add(obj, pos));
-                if (thisRun == 100)
+                if (thisRun == 1)
                 {
                     thisRun = 0;
                     yield return new WaitForEndOfFrame();
