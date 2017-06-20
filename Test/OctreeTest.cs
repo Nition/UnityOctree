@@ -71,11 +71,12 @@ namespace UnityOctree
             int count = 0;
             int thisRun = 0;
             GameObject obj = new GameObject("Dummy");
-            foreach (Vector3 pos in positions)
+            for (int i=0;i<positions.Count;i++)
             {
+                Vector3 pos = positions[i];
                 count++;
                 thisRun++;
-                treeObj.Enqueue(tree.Add(obj, pos));
+                treeObj.Enqueue(tree.Add(obj, ref pos));
                 if (thisRun == 4)
                 {
                     thisRun = 0;
@@ -102,9 +103,11 @@ namespace UnityOctree
         void PopulateTree()
         {
             GameObject obj = new GameObject("Dummy");
-            foreach (Vector3 pos in positions)
-                treeObj.Enqueue(tree.Add(obj, pos));
-
+            for (int i = 0; i < positions.Count; i++)
+            {
+                Vector3 pos = positions[i];
+                treeObj.Enqueue(tree.Add(obj, ref pos));
+            }
         }
         void DestroyTree()
         {

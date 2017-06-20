@@ -10,23 +10,7 @@ namespace UnityOctree
         {
             return true;
         }
-        public bool IsColliding(FastBounds bounds)
-        {
-            return true;
-        }
-        public bool GetColliding(Bounds bounds, List<OctreeObject<T>> result)
-        {
-            return true;
-        }
-        public bool GetColliding(Bounds bounds, List<T> result)
-        {
-            return true;
-        }
-        public bool GetColliding(FastBounds bounds, List<OctreeObject<T>> result)
-        {
-            return true;
-        }
-        public bool GetColliding(FastBounds bounds, List<T> result)
+        public bool IsColliding(Vector3 minBounds, Vector3 maxBounds)
         {
             return true;
         }
@@ -34,10 +18,33 @@ namespace UnityOctree
         {
             return true;
         }
+        
+        public bool GetColliding(Vector3 minBounds, Vector3 maxBounds, List<T> result)
+        {
+            return true;
+        }
+        public bool GetColliding(Bounds bounds, List<T> result)
+        {
+            return true;
+        }
+        public bool GetColliding(ref Ray checkRay, float maxDistance, List<T> result)
+        {
+            return true;
+        }
+
+        public bool GetColliding(Bounds bounds, List<OctreeObject<T>> result)
+        {
+            return true;
+        }
+        public bool GetColliding(Vector3 minBounds, Vector3 maxBounds, List<OctreeObject<T>> result)
+        {
+            return true;
+        }
         public bool GetColliding(ref Ray checkRay, float maxDistance, List<OctreeObject<T>> result)
         {
             return true;
         }
+
         public bool GetNearby(ref Ray ray, float maxDistance, List<OctreeObject<T>> result)
         {
             return true;
@@ -46,6 +53,7 @@ namespace UnityOctree
         {
             return true;
         }
+
         public partial class OctreeNode
         {
             /// <summary>
@@ -53,10 +61,12 @@ namespace UnityOctree
             /// </summary>
             /// <param name="checkBounds">Bounds to check.</param>
             /// <returns>True if there was a collision.</returns>
-            public bool IsColliding(ref FastBounds checkBounds)
+            public bool IsColliding(Bounds checkBounds)
             {
+                Vector3 min = checkBounds.min;
+                Vector3 max = checkBounds.max;
                 // Are the input bounds at least partially in this node?
-                if (!actualBounds.IntersectBounds(ref checkBounds))
+                if (!IntersectBounds(ref min, ref max))
                 {
                     return false;
                 }
@@ -64,7 +74,7 @@ namespace UnityOctree
                 // Check against any objects in this node
                 for (int i = 0; i < objects.Count; i++)
                 {
-                    if (objects[i].bounds.IntersectBounds(ref checkBounds))
+                    if (objects[i].IntersectBounds(ref min, ref max))
                     {
                         return true;
                     }
@@ -91,11 +101,11 @@ namespace UnityOctree
             /// <param name="checkRay">Ray to check.</param>
             /// <param name="maxDistance">Distance to check.</param>
             /// <returns>True if there was a collision.</returns>
-            public bool IsColliding(ref Ray checkRay, float maxDistance)
+            public bool IsColliding(ref Ray checkRay, ref float maxDistance)
             {
                 // Is the input ray at least partially in this node?
                 float distance;
-                if (!actualBounds.IntersectRay(ref checkRay, out distance) || distance > maxDistance)
+                if (!IntersectRay(ref checkRay, out distance) || distance > maxDistance)
                 {
                     return false;
                 }
@@ -103,7 +113,7 @@ namespace UnityOctree
                 // Check against any objects in this node
                 for (int i = 0; i < objects.Count; i++)
                 {
-                    if (objects[i].bounds.IntersectRay(ref checkRay, out distance) && distance <= maxDistance)
+                    if (objects[i].IntersectRay(ref checkRay, out distance) && distance <= maxDistance)
                     {
                         return true;
                     }
@@ -130,10 +140,12 @@ namespace UnityOctree
             /// <param name="checkBounds">Bounds to check. Passing by ref as it improves performance with structs.</param>
             /// <param name="result">List result.</param>
             /// <returns>Objects that intersect with the specified bounds.</returns>
-            public void GetColliding(ref Bounds checkBounds, List<T> result)
+            public void GetColliding(Bounds checkBounds, List<T> result)
             {
+                Vector3 min = checkBounds.min;
+                Vector3 max = checkBounds.max;
                 // Are the input bounds at least partially in this node?
-                if (!actualBounds.IntersectBounds(ref checkBounds))
+                if (!IntersectBounds(ref min, ref max))
                 {
                     return;
                 }
@@ -141,7 +153,7 @@ namespace UnityOctree
                 // Check against any objects in this node
                 for (int i = 0; i < objects.Count; i++)
                 {
-                    if (objects[i].bounds.IntersectBounds(ref checkBounds))
+                    if (objects[i].IntersectBounds(ref min, ref max))
                     {
                         result.Add(objects[i].obj);
                     }
@@ -168,7 +180,7 @@ namespace UnityOctree
             {
                 float distance;
                 // Is the input ray at least partially in this node?
-                if (!actualBounds.IntersectRay(ref checkRay, out distance) || distance > maxDistance)
+                if (!IntersectRay(ref checkRay, out distance) || distance > maxDistance)
                 {
                     return;
                 }
@@ -176,7 +188,7 @@ namespace UnityOctree
                 // Check against any objects in this node
                 for (int i = 0; i < objects.Count; i++)
                 {
-                    if (objects[i].bounds.IntersectRay(ref checkRay, out distance) && distance <= maxDistance)
+                    if (objects[i].IntersectRay(ref checkRay, out distance) && distance <= maxDistance)
                     {
                         result.Add(objects[i].obj);
                     }
@@ -201,7 +213,7 @@ namespace UnityOctree
             /// <returns>Objects within range.</returns>
             public void GetNearby(ref Ray ray, ref float maxDistance, List<T> result)
             {
-                bool intersected = actualBounds.IntersectRayFat(ref ray, ref maxDistance);
+                bool intersected = IntersectRayFat(ref ray, ref maxDistance);
                 if (!intersected)
                 {
                     return;
@@ -210,7 +222,7 @@ namespace UnityOctree
                 // Check against any objects in this node
                 for (int i = 0; i < objects.Count; i++)
                 {
-                    if (SqrDistanceToRay(ray, objects[i].bounds.center) <= (maxDistance * maxDistance))
+                    if (SqrDistanceToRay(ray, objects[i].boundsCenter) <= (maxDistance * maxDistance))
                     {
                         result.Add(objects[i].obj);
                     }
