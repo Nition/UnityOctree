@@ -14,7 +14,7 @@ namespace UnityOctree
         {
             return true;
         }
-        public bool GetColliding(Bounds bounds, List<OctreeObject> result)
+        public bool GetColliding(Bounds bounds, List<OctreeObject<T>> result)
         {
             return true;
         }
@@ -22,7 +22,7 @@ namespace UnityOctree
         {
             return true;
         }
-        public bool GetColliding(FastBounds bounds, List<OctreeObject> result)
+        public bool GetColliding(FastBounds bounds, List<OctreeObject<T>> result)
         {
             return true;
         }
@@ -34,11 +34,11 @@ namespace UnityOctree
         {
             return true;
         }
-        public bool GetColliding(ref Ray checkRay,float maxDistance,List<OctreeObject> result)
+        public bool GetColliding(ref Ray checkRay, float maxDistance, List<OctreeObject<T>> result)
         {
             return true;
         }
-        public bool GetNearby(ref Ray ray, float maxDistance, List<OctreeObject> result)
+        public bool GetNearby(ref Ray ray, float maxDistance, List<OctreeObject<T>> result)
         {
             return true;
         }
@@ -56,7 +56,7 @@ namespace UnityOctree
             public bool IsColliding(ref FastBounds checkBounds)
             {
                 // Are the input bounds at least partially in this node?
-                if (!actualBounds.IntersectBounds(checkBounds))
+                if (!actualBounds.IntersectBounds(ref checkBounds))
                 {
                     return false;
                 }
@@ -64,7 +64,7 @@ namespace UnityOctree
                 // Check against any objects in this node
                 for (int i = 0; i < objects.Count; i++)
                 {
-                    if (objects[i].bounds.IntersectBounds(checkBounds))
+                    if (objects[i].bounds.IntersectBounds(ref checkBounds))
                     {
                         return true;
                     }
@@ -95,7 +95,7 @@ namespace UnityOctree
             {
                 // Is the input ray at least partially in this node?
                 float distance;
-                if (!actualBounds.IntersectRay(checkRay, out distance) || distance > maxDistance)
+                if (!actualBounds.IntersectRay(ref checkRay, out distance) || distance > maxDistance)
                 {
                     return false;
                 }
@@ -103,7 +103,7 @@ namespace UnityOctree
                 // Check against any objects in this node
                 for (int i = 0; i < objects.Count; i++)
                 {
-                    if (objects[i].bounds.IntersectRay(checkRay, out distance) && distance <= maxDistance)
+                    if (objects[i].bounds.IntersectRay(ref checkRay, out distance) && distance <= maxDistance)
                     {
                         return true;
                     }
@@ -133,7 +133,7 @@ namespace UnityOctree
             public void GetColliding(ref Bounds checkBounds, List<T> result)
             {
                 // Are the input bounds at least partially in this node?
-                if (!actualBounds.IntersectBounds(checkBounds))
+                if (!actualBounds.IntersectBounds(ref checkBounds))
                 {
                     return;
                 }
@@ -141,7 +141,7 @@ namespace UnityOctree
                 // Check against any objects in this node
                 for (int i = 0; i < objects.Count; i++)
                 {
-                    if (objects[i].bounds.IntersectBounds(checkBounds))
+                    if (objects[i].bounds.IntersectBounds(ref checkBounds))
                     {
                         result.Add(objects[i].obj);
                     }
@@ -168,7 +168,7 @@ namespace UnityOctree
             {
                 float distance;
                 // Is the input ray at least partially in this node?
-                if (!actualBounds.IntersectRay(checkRay, out distance) || distance > maxDistance)
+                if (!actualBounds.IntersectRay(ref checkRay, out distance) || distance > maxDistance)
                 {
                     return;
                 }
@@ -176,7 +176,7 @@ namespace UnityOctree
                 // Check against any objects in this node
                 for (int i = 0; i < objects.Count; i++)
                 {
-                    if (objects[i].bounds.IntersectRay(checkRay, out distance) && distance <= maxDistance)
+                    if (objects[i].bounds.IntersectRay(ref checkRay, out distance) && distance <= maxDistance)
                     {
                         result.Add(objects[i].obj);
                     }
@@ -201,7 +201,7 @@ namespace UnityOctree
             /// <returns>Objects within range.</returns>
             public void GetNearby(ref Ray ray, ref float maxDistance, List<T> result)
             {
-                bool intersected = actualBounds.IntersectRayFat(ray,maxDistance);
+                bool intersected = actualBounds.IntersectRayFat(ref ray, ref maxDistance);
                 if (!intersected)
                 {
                     return;
@@ -217,13 +217,30 @@ namespace UnityOctree
                 }
 
                 // Check children
-               // if (children != null)
-               // {
-               //     for (int i = 0; i < 8; i++)
-               //     {
-               //         children[i].GetNearby(ref ray, ref maxDistance, result);
-               //     }
-               // }
+                // if (children != null)
+                // {
+                //     for (int i = 0; i < 8; i++)
+                //     {
+                //         children[i].GetNearby(ref ray, ref maxDistance, result);
+                //     }
+                // }
+            }
+
+            public float SqrDistanceToRay(Ray ray, Vector3 point)
+            {
+                Vector3 lhs = vCopy;
+                lhs.x = ray.direction.x;
+                lhs.y = ray.direction.y;
+                lhs.z = ray.direction.z;
+                Vector3 rhs = vCopy;
+                rhs.x = point.x - ray.origin.x;
+                rhs.y = point.y - ray.origin.y;
+                rhs.z = point.z - ray.origin.z;
+                Vector3 result = vCopy;
+                result.x = lhs.y * rhs.z - lhs.z * rhs.y;
+                result.y = lhs.z * rhs.x - lhs.x * rhs.z;
+                result.z = lhs.x * rhs.y - lhs.y * rhs.x;
+                return result.sqrMagnitude;
             }
         }
 

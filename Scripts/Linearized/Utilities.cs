@@ -95,18 +95,15 @@ namespace UnityOctree
         }
         public static int SetChild(int mask, uint index)
         {
-            index++;
-            return mask |= 1<<(int)index;
+            return mask |= 1<<((int)index+1);
         }
         public static int UnsetChild(int mask, uint index)
         {
-            index++;
-            return mask &= ~1<<(int)index;
+            return mask &= ~1<<((int)index+1);
         }
         public static bool CheckChild(int mask, uint index)
         {
-            index++;
-            return (mask & 1<<(int)index) != 0;
+            return (mask & 1<<((int)index+1)) != 0;
         }
         /// <summary>
         /// Returns the parent of the provided locationCode
@@ -116,13 +113,6 @@ namespace UnityOctree
         public static uint ParentCode(uint childLocationCode)
         {
             return childLocationCode >> 3;
-        }
-
-        public static float SqrDistanceToRay(Ray ray, Vector3 point)
-        {
-            Vector3 lhs, origin;
-            Vector3 rhs = new Vector3(point.x - (origin = ray.origin).x, point.y - origin.y, point.z - origin.z);
-            return new Vector3((lhs = ray.direction).y * rhs.z - lhs.z * rhs.y, lhs.z * rhs.x - lhs.x * rhs.z, lhs.x * rhs.y - lhs.y * rhs.x).sqrMagnitude;
         }
 
         public static uint ChildCode(uint parentLocationCode, uint index)

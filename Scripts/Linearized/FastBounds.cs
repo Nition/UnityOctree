@@ -7,23 +7,74 @@ namespace UnityOctree
     /// <summary>
     /// A stripped down version of UnityEngine's bounds struct.
     /// Keeps all methods and values local to prevent managed/unmanaged overhead.
-    /// Immutable
     /// </summary>
     public struct FastBounds
     {
-        public readonly Vector3 extents;
-        public readonly Vector3 center;
-        public readonly Vector3 size;
-        public readonly Vector3 min;
-        public readonly Vector3 max;
-
+        public Vector3 extents;
+        public Vector3 center;
+        public Vector3 size;
+        public Vector3 min;
+        public Vector3 max;
+        public Vector3 copy;
         public FastBounds(Vector3 center, Vector3 size)
+        {
+            copy = new Vector3();
+            this.center = center;
+            this.size = size;
+            extents = copy;//Avoid calling V3 constructor
+            extents.x = size.x * .5F;
+            extents.y = size.y * .5F;
+            extents.z = size.z * .5F;
+            max = copy;//Avoid calling V3 constructor
+            max.x = center.x + extents.x;
+            max.y = center.y + extents.y;
+            max.z = center.z + extents.z;
+            min = copy; //Avoid calling V3 constructor
+            min.x = center.x - extents.x;
+            min.y = center.y - extents.y;
+            min.z = center.z - extents.z;
+        }
+
+        public FastBounds SetPositionOnly(ref Vector3 newPos)
+        {
+            center = newPos;
+            max.x = center.x + extents.x;
+            max.y = center.y + extents.y;
+            max.z = center.z + extents.z;
+            min.x = center.x - extents.x;
+            min.y = center.y - extents.y;
+            min.z = center.z - extents.z;
+            return this;
+        }
+
+        public FastBounds FromBounds(ref Bounds bounds)
+        {
+            center = bounds.center;
+            size = bounds.size;
+            extents = bounds.extents;
+            max.x = center.x + extents.x;
+            max.y = center.y + extents.y;
+            max.z = center.z + extents.z;
+            min.x = center.x - extents.x;
+            min.y = center.y - extents.y;
+            min.z = center.z - extents.z;
+            return this;
+        }
+
+        public FastBounds SetValues(ref Vector3 center,ref Vector3 size)
         {
             this.center = center;
             this.size = size;
-            extents = new Vector3(size.x*.5F,size.y*.5F,size.z*.5F);
-            max = new Vector3(center.x + extents.x, center.y + extents.y, center.z + extents.z);
-            min = new Vector3(center.x - extents.x, center.y - extents.y, center.z - extents.z);
+            extents.x = this.size.x * .5F;
+            extents.y = this.size.y * .5F;
+            extents.z = this.size.z * .5F;
+            max.x = this.center.x + extents.x;
+            max.y = this.center.y + extents.y;
+            max.z = this.center.z + extents.z;
+            min.x = this.center.x - extents.x;
+            min.y = this.center.y - extents.y;
+            min.z = this.center.z - extents.z;
+            return this;
         }
 
         /// <summary>
@@ -31,11 +82,18 @@ namespace UnityOctree
         /// </summary>
         public FastBounds(Bounds bounds)
         {
+            copy = new Vector3();
             center = bounds.center;
             size = bounds.size;
             extents = bounds.extents;
-            max = new Vector3(center.x + extents.x, center.y + extents.y, center.z + extents.z);
-            min = new Vector3(center.x - extents.x, center.y - extents.y, center.z - extents.z);
+            max = copy;//Avoid calling V3 constructor
+            max.x = center.x + extents.x;
+            max.y = center.y + extents.y;
+            max.z = center.z + extents.z;
+            min = copy; //Avoid calling V3 constructor
+            min.x = center.x - extents.x;
+            min.y = center.y - extents.y;
+            min.z = center.z - extents.z;
         }
 
         /// <summary>
@@ -47,16 +105,17 @@ namespace UnityOctree
             return new Bounds(center, size);
         }
 
-        public bool ContainsBounds(Bounds bounds)
+        public bool ContainsBounds(ref Bounds bounds)
         {
-            return ContainsBounds(new FastBounds(bounds));
+            FastBounds fb = new FastBounds(bounds);
+            return ContainsBounds(ref fb);
         }
         /// <summary>
         /// Returns true if the bounds fully encapsulates the provided bounds
         /// </summary>
         /// <param name="bounds"></param>
         /// <returns></returns>
-        public bool ContainsBounds(FastBounds bounds)
+        public bool ContainsBounds(ref FastBounds bounds)
         {
             if (bounds.min.x <= min.x || bounds.max.x >= max.x)
                 return false; //Other X is beyond or exactly aligned with outer X
@@ -73,7 +132,7 @@ namespace UnityOctree
         /// </summary>
         /// <param name="point"></param>
         /// <returns></returns>
-        public bool ContainsPoint(Vector3 point)
+        public bool ContainsPoint(ref Vector3 point)
         {
             //Point is exactly equal or outside of min/max of bounds
             if (point.x >= max.x || point.x <= min.x)
@@ -86,16 +145,16 @@ namespace UnityOctree
             return false;
         }
 
-        public bool IntersectRay(Ray ray)
+        public bool IntersectRay(ref Ray ray)
         {
             float dummy;
-            return IntersectRay(ray, out dummy);
+            return IntersectRay(ref ray, out dummy);
         }
 
-        public bool IntersectRayFat(Ray ray,float maxDistance)
+        public bool IntersectRayFat(ref Ray ray, ref float maxDistance)
         {
             float dummy;
-            return IntersectRayFat(ray, maxDistance, out dummy);
+            return IntersectRayFat(ref ray, ref maxDistance, out dummy);
         }
         /// <summary>
         /// Returns true if a ray comes within maxDistance of the bounds
@@ -103,10 +162,18 @@ namespace UnityOctree
         /// <param name="ray"></param>
         /// <param name="distance"></param>
         /// <returns></returns>
-        public bool IntersectRayFat(Ray ray, float maxDistance, out float distance)
+        public bool IntersectRayFat(ref Ray ray, ref float maxDistance, out float distance)
         {
+            Vector3 minBounds = copy;
+            minBounds.x = min.x * maxDistance;
+            minBounds.y = min.y * maxDistance;
+            minBounds.z = min.z * maxDistance;
+            Vector3 maxBounds = copy;
+            minBounds.x = max.x * maxDistance;
+            minBounds.y = max.y * maxDistance;
+            minBounds.z = max.z * maxDistance;
             //Artifically increase bounds size by distance per side
-            return IntersectRayInternal(ray, new Vector3(min.x*maxDistance,min.y*maxDistance,min.z*maxDistance), new Vector3(max.x*maxDistance,max.y*maxDistance,max.z*maxDistance), out distance);
+            return IntersectRayInternal(ref ray, ref minBounds,ref maxBounds, out distance);
         }
 
         /// <summary>
@@ -115,12 +182,12 @@ namespace UnityOctree
         /// <param name="ray"></param>
         /// <param name="distance"></param>
         /// <returns></returns>
-        public bool IntersectRay(Ray ray, out float distance)
+        public bool IntersectRay(ref Ray ray, out float distance)
         {
-            return IntersectRayInternal(ray, min, max, out distance);
+            return IntersectRayInternal(ref ray, ref min, ref max, out distance);
         }
 
-        private bool IntersectRayInternal(Ray ray, Vector3 min, Vector3 max, out float distance)
+        private bool IntersectRayInternal(ref Ray ray, ref Vector3 min, ref Vector3 max, out float distance)
         {
             //Direction must be unit length
             Vector3 dirFrac = new Vector3(1.0F / ray.direction.x, 1.0F / ray.direction.y, 1.0F / ray.direction.z);
@@ -153,12 +220,13 @@ namespace UnityOctree
             return true;
         }
 
-        public bool IntersectBounds(Bounds bounds)
+        public bool IntersectBounds(ref Bounds bounds)
         {
-            return IntersectBounds(new FastBounds(bounds));
+            FastBounds fb = new FastBounds(bounds);
+            return IntersectBounds(ref fb);
         }
 
-        public bool IntersectBounds(FastBounds bounds)
+        public bool IntersectBounds(ref FastBounds bounds)
         {
             return
                 min.x <= bounds.max.x &&
