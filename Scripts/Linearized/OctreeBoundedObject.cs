@@ -41,7 +41,11 @@ namespace UnityOctree
             }
             public void SetBounds(ref Vector3 center, Vector3 size, float looseness)
             {
-                SetBounds(center, size*looseness);
+                Vector3 newSize = size;
+                newSize.x *= looseness;
+                newSize.y *= looseness;
+                newSize.z *= looseness;
+                SetBounds(center, newSize);
                 baseSize = size;
             }
             public void SetBounds(Vector3 center, Vector3 size)

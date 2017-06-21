@@ -30,14 +30,13 @@ namespace UnityOctree
         private Vector3 pointSize = Vector3.zero; //Default size for point types
         private readonly float looseness;
 
-        public LooseOctree(float initialSize, Vector3 initialWorldPosition, float loosenessVal,float preAllocationFactor)
+        public LooseOctree(float initialSize, Vector3 initialWorldPosition, float loosenessVal,int estimatedMaxObjectCount)
         {
             Debug.Assert(loosenessVal >= 1.0F && loosenessVal <= 2.0F, "Octree looseness should be between 1.0 - 2.0");
-            int allocationFactor = Mathf.FloorToInt(preAllocationFactor);
-            objectPool = new ObjectPool<OctreeObject<T>>((1 << maxDepth) * numObjectsAllowed);
-            orphanObjects = new Queue<OctreeObject<T>>(numObjectsAllowed * 8);
-            nodePool = new ObjectPool<OctreeNode>(1 << maxDepth);
-            nodes = new Dictionary<uint, OctreeNode>(1 << maxDepth);
+            objectPool = new ObjectPool<OctreeObject<T>>(estimatedMaxObjectCount);
+            orphanObjects = new Queue<OctreeObject<T>>(numObjectsAllowed*maxDepth);
+            nodePool = new ObjectPool<OctreeNode>(Mathf.CeilToInt(estimatedMaxObjectCount/numObjectsAllowed));
+            nodes = new Dictionary<uint, OctreeNode>(Mathf.CeilToInt(estimatedMaxObjectCount/numObjectsAllowed));
 
             removals = orphanObjects;
             this.looseness = loosenessVal;
@@ -76,6 +75,9 @@ namespace UnityOctree
             return newObj;
         }
 
+        /// <summary>
+        /// Prints out the entire tree structure. Careful, this is SLOW as it may print tens of thousands of lines if the tree is big.
+        /// </summary>
         public void Print()
         {
             Debug.Log("---------------------------------------------------------------------------");
@@ -96,10 +98,10 @@ namespace UnityOctree
                 Gizmos.color = new Color(tintVal, 0F, 1.0f - tintVal);
                 if (drawNodes)
                     Gizmos.DrawWireCube(node.Value.boundsCenter, node.Value.boundsSize);
-
+#if UNITY_EDITOR
                 if (drawLabels)
-                    UnityEditor.Handles.Label(node.Value.boundsCenter, "Depth("+System.Convert.ToString(GetDepth(node.Value.locationCode)) + ") : Branch(" + System.Convert.ToString(node.Value.branchItemCount) +")");
-
+                    UnityEditor.Handles.Label(node.Value.boundsCenter, "Depth("+System.Convert.ToString(GetDepth(node.Value.locationCode)) + ") : Branch(" + System.Convert.ToString(node.Value.branchItemCount) +") : Here("+node.Value.localItemCount+")");
+#endif
                 Gizmos.color = new Color(tintVal, GetIndex(node.Key) / 7F, 1.0f - tintVal);
                 foreach (OctreeObject<T> obj in node.Value.objects)
                 {
