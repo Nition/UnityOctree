@@ -1,23 +1,10 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using System;
 namespace UnityOctree
 {
     public partial class LooseOctree<T> where T : class
     {
-        /// <summary>
-        /// Returns a string formatted binary code
-        /// </summary>
-        /// <param name="locationCode"></param>
-        /// <returns></returns>
-        private static string GetStringCode(uint locationCode)
-        {
-            string name = Convert.ToString(locationCode, 2);
-            name = System.Text.RegularExpressions.Regex.Replace(name, ".{3}", "$0 ").Trim();
-            return name;
-        }
-
         /// <summary>
         /// Returns the index of the locationCode
         /// </summary>
@@ -25,7 +12,7 @@ namespace UnityOctree
         /// <returns></returns>
         public static uint GetIndex(uint locationCode)
         {
-            uint mask = (1 << 3) - 1;
+            uint mask = (1U << 3) - 1U;
             return locationCode & mask;
         }
 
@@ -37,10 +24,7 @@ namespace UnityOctree
         /// <returns></returns>
         public static uint SiblingCode(uint locationCode, uint index)
         {
-            if (index > 7U)
-            {
-                Debug.LogError("Index must be between 0-7");
-            }
+            Debug.Assert(index > 7U, "SiblingCode index must be between 0-7");
             return ChildCode(ParentCode(locationCode), index);
         }
         /// <summary>
@@ -51,13 +35,8 @@ namespace UnityOctree
         public static uint NextSiblingCode(uint locationCode)
         {
             uint index = GetIndex(locationCode);
-            if (index == 7U)
-            {
-                Debug.LogError("Next sibling index > 7. Wrapping to 0");
-                index = 0U;
-            }
-            else index += 1U;
-            return SiblingCode(locationCode, index);
+            Debug.Assert(index < 7U, "Calling NextSiblingCode on last index.");
+            return SiblingCode(locationCode, index+1);
         }
         /// <summary>
         /// Returns location code for sibling of the provided locationCode at current index-1
@@ -67,13 +46,8 @@ namespace UnityOctree
         public static uint PreviousSiblingCode(uint locationCode)
         {
             uint index = GetIndex(locationCode);
-            if (index == 0)
-            {
-                Debug.LogError("Previous sibling index < 0. Wrapping to 7");
-                index = 7U;
-            }
-            else index -= 1U;
-            return SiblingCode(locationCode, index);
+            Debug.Assert(index > 0U, "Calling PreviousSiblingCode on zero index.");
+            return SiblingCode(locationCode, index-1);
         }
 
         /// <summary>
@@ -90,7 +64,7 @@ namespace UnityOctree
                     return d;
                 locationCode >>= 3;
             }
-            Debug.LogError("Could not find depth of node at index + " + GetIndex(start) + " and position: + " + start + "! Stopped searching at " + locationCode);
+            Debug.Assert(false, "Could not find depth of node at index + " + GetIndex(start) + " and position: + " + start + "! Stopped searching at " + locationCode);
             return -1;
         }
         public static int SetChild(int mask, uint index)
@@ -103,7 +77,7 @@ namespace UnityOctree
         }
         public static bool CheckChild(int mask, uint index)
         {
-            return (mask & 1<<((int)index+1)) != 0;
+            return (mask & 1U<<((int)index+1)) != 0U;
         }
         /// <summary>
         /// Returns the parent of the provided locationCode
@@ -112,6 +86,7 @@ namespace UnityOctree
         /// <returns></returns>
         public static uint ParentCode(uint childLocationCode)
         {
+            Debug.Assert(childLocationCode != 1, "Trying to get parent locationCode for root. It has no parent!");
             return childLocationCode >> 3;
         }
 

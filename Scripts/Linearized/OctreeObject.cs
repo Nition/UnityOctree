@@ -13,9 +13,9 @@ namespace UnityOctree
         {
             this.node = node;
         }
-        public bool Remove()
+        public void Remove()
         {
-            return node.RemoveObject(this);
+            node.RemoveObject(this);
         }
     }
 }

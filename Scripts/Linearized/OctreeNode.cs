@@ -5,18 +5,21 @@ namespace UnityOctree
 {
     public partial class LooseOctree<T> where T : class
     {
-        public partial class OctreeNode:OctreeBoundedObject
+        public partial class OctreeNode : OctreeBoundedObject
         {
             public uint locationCode;
             LooseOctree<T> tree;
             public List<OctreeObject<T>> objects = new List<OctreeObject<T>>(numObjectsAllowed * 2);
-            Queue<OctreeObject<T>> orphanObjects = new Queue<OctreeObject<T>>(numObjectsAllowed * 8);
-            Queue<OctreeObject<T>> removals; //Same reference, different name.
+            Queue<OctreeObject<T>> orphanObjects;
+            Queue<OctreeObject<T>> removals;
             public int branchItemCount;
             public int childExists = 0; //Bitmask for child nodes
             public void Initialize(uint locationCode, LooseOctree<T> tree)
             {
-                removals = orphanObjects;
+                orphanObjects = tree.orphanObjects;
+                removals = tree.removals;
+                branchItemCount = 0;
+                childExists = 0;
                 this.locationCode = locationCode;
                 this.tree = tree;
             }
@@ -24,31 +27,25 @@ namespace UnityOctree
             //Adds a child node at index. If any existing objects fit, moves them into it
             private bool AddChild(uint index)
             {
-                if (index > 7U)
-                {
-                    Debug.LogError("AddChild index must be 0-7");
-                    return false;
-                }
-                if (CheckChild(childExists, index))
-                {
-                    Debug.LogError("This child already exists: " + index + ".");
-                    return false;
-                }
+                Debug.Assert(index <= 7U, "AddChild index must be between 0-7");
+                Debug.Assert(CheckChild(childExists, index) == false, "Trying to add a child that already exists.");
+                Debug.Assert(GetDepth(locationCode) < maxDepth, "Max depth reached. This will cause integer overflow. Recommend increasing numObjectsAllowed or switching to 64bit integers.");
+                Debug.Assert(removals.Count == 0, "removals queue is not empty when it should be");
                 uint newCode;
                 OctreeNode newNode = tree.nodePool.Pop();
                 newNode.Initialize(newCode = ChildCode(locationCode, index), tree);
                 tree.nodes[newCode] = newNode; //Add to dictionary
-                SetChildBounds(newNode);
+                newNode.ResetBounds();
                 childExists = SetChild(childExists, index); //Set flag
                 int objCount;
-                if ((objCount = objects.Count) > 0)
+                if ((objCount = objects.Count) > 0) //Place objects into the new node
                 {
                     int i;
                     for (i = 0; i < objCount; i++)
                     {
                         OctreeObject<T> obj;
                         if (BestFitChild(obj = objects[i]) == index)
-                            if (newNode.TryAddObj(obj, false))//Make sure the object fits in the new location
+                            if (newNode.TryAddObj(obj, false))//Make sure the object fits in the new location. Otherwise keep it here
                                 removals.Enqueue(obj);
                     }
                     int itemCount = removals.Count;
@@ -65,47 +62,110 @@ namespace UnityOctree
 
             uint BestFitChild(OctreeObject<T> obj)
             {
-                Vector3 objCenter, center;
-                return ((objCenter = obj.boundsCenter).x <= (center = boundsCenter).x ? 0U : 1U) + (objCenter.y >= center.y ? 0U : 4U) + (objCenter.z <= center.z ? 0U : 2U);
+                return BestFitChild(ref obj.boundsCenter);
             }
 
+            uint BestFitChild(ref Vector3 objCenter)
+            {
+                return (objCenter.x <= boundsCenter.x ? 0U : 1U) + (objCenter.y >= boundsCenter.y ? 0U : 4U) + (objCenter.z <= boundsCenter.z ? 0U : 2U);
+            }
+
+            public void RebuildTree()
+            {
+                OctreeNode rootNode = tree.rootNode;
+                //Merge from the root
+                rootNode.MergeNode();
+                rootNode.branchItemCount = 0;
+                int itemCount = orphanObjects.Count;
+                while (itemCount > 0)
+                {
+                    if (!rootNode.TryAddObj(orphanObjects.Dequeue(), true))
+                    {
+                        Debug.LogError("Rebuild failed. Could not re-add objects");
+                        return;
+                    }
+                    itemCount--;
+                }
+            }
+
+            //Find the lowest node that fully contains the given bounds
+            private bool FindContainingNode(ref Vector3 center, ref Vector3 minBounds, ref Vector3 maxBounds, out OctreeNode node)
+            {
+                node = null;
+                if (!ContainsBounds(ref minBounds, ref maxBounds))
+                    return false;
+
+                uint childCode = locationCode;//Start here
+                OctreeNode childNode;
+                uint index;
+                Dictionary<uint, OctreeNode> nodes = tree.nodes;
+                bool firstLoop = true;
+                while (nodes.TryGetValue(childCode, out childNode))
+                {
+                    if (!firstLoop && !childNode.ContainsBounds(ref minBounds, ref maxBounds))
+                    { //Doesn't fit in this node. Put it in the parent node. If it's the firstLoop, we already checked this.
+                        node = nodes[ParentCode(childCode)];
+                        return true;
+                    }
+
+                    if (CheckChild(childNode.childExists, index = childNode.BestFitChild(ref center)))
+                    { //Drop down another level if we have a valid child
+                        childCode = ChildCode(childCode, index);
+                    }
+                    else
+                    { //No children
+                        node = childNode;
+                        return true;
+                    }
+                    firstLoop = false;
+                }
+
+                return false;
+            }
             /// <summary>
             /// Try to add an object, starting at this node
             /// </summary>
             public bool TryAddObj(OctreeObject<T> newObj, bool updateCount)
             {
-                if (!ContainsBounds(ref newObj.boundsMin,ref newObj.boundsMax))
+                if (!ContainsBounds(ref newObj.boundsMin, ref newObj.boundsMax))
                     return false; //Doesn't fit. Abort off the bat.
 
+                OctreeNode childNode = null;
+                OctreeNode previousNode = null;
                 uint childCode = locationCode; //Start here
-                OctreeNode childNode;
                 uint index;
                 Dictionary<uint, OctreeNode> nodes = tree.nodes;
+                bool firstLoop = true;
                 while (nodes.TryGetValue(childCode, out childNode))
                 {
-                    if (!childNode.ContainsBounds(ref newObj.boundsMin,ref newObj.boundsMax))
-                    { //Doesn't fit in this node. Put it in the parent node
-                        if (childCode == 1U)//We are root. Abort
-                            return false;
-                        nodes[ParentCode(childCode)].PutObjectInNode(newObj, updateCount);
+                    if (!firstLoop && !childNode.ContainsBounds(ref newObj.boundsMin, ref newObj.boundsMax))
+                    { //Doesn't fit in this node. Put it in the parent node. If it's the firstLoop, we already checked this.
+                        previousNode.PutObjectInNode(newObj, updateCount);
                         return true;
                     }
 
+                    bool childAdded = false;
                     if (!CheckChild(childNode.childExists, index = childNode.BestFitChild(newObj)) && childNode.objects.Count >= numObjectsAllowed)
+                    {
                         childNode.AddChild(index);//We hit the limit and no child exists here yet. Make one
+                        childAdded = true;
+                    }
 
-                    if (CheckChild(childNode.childExists, index))
-                    { //Drop down another level
-                        childCode = ChildCode(childCode, childNode.BestFitChild(newObj));
+                    if (childAdded || CheckChild(childNode.childExists, index))
+                    { //Drop down another level if we added a child or it already exists
+                        childCode = ChildCode(childCode, index);
                     }
                     else
                     { //Place it here. We have no children and we're under the limit
                         childNode.PutObjectInNode(newObj, updateCount);
                         return true;
                     }
+                    previousNode = childNode;
+                    firstLoop = false;
                 }
                 return false;
             }
+
             private void PutObjectInNode(OctreeObject<T> obj, bool updateCount)
             {
                 obj.SetNode(this);
@@ -113,7 +173,7 @@ namespace UnityOctree
                 if (updateCount)
                     UpdateBranchCount(true);
             }
-            
+
             /// <summary>
             /// Traverse up the tree and update counts for all nodes.
             /// If a branch has zero objects in it, it will be merged
@@ -140,15 +200,25 @@ namespace UnityOctree
                     else
                         parentCode = ParentCode(parentNode.locationCode); //Step up another level
                 }
-
+                Debug.Assert(orphanObjects.Count == 0, "orphanObjects queue is not empty when it should be");
                 if (topLevel != null)
-                    topLevel.MergeNode(orphanObjects);
+                {
+                    topLevel.MergeNode();
+                    int itemCount = orphanObjects.Count;
+                    while (itemCount > 0)
+                    {
+                        topLevel.branchItemCount--; //Items are now in this node which doesn't count towards our branch count
+                        topLevel.PutObjectInNode(orphanObjects.Dequeue(), false);
+                        itemCount--;
+                    }
+                }
             }
             //Merge all children into this node
-            public void MergeNode(Queue<OctreeObject<T>> orphanObjects)
+            public void MergeNode()
             {
                 if (childExists == 0)//No children to merge
                     return;
+
                 uint i;
                 Dictionary<uint, OctreeNode> nodes = tree.nodes;
                 ObjectPool<OctreeNode> nodePool = tree.nodePool;
@@ -159,14 +229,13 @@ namespace UnityOctree
 
                     uint childCode;
                     OctreeNode childNode = nodes[childCode = ChildCode(locationCode, i)];
-                    if (childNode.branchItemCount > numObjectsAllowed)
-                        continue; //Can't merge this child
 
-                    childNode.MergeNode(orphanObjects);
+                    childNode.MergeNode();
                     //Add objects to orphaned list
                     List<OctreeObject<T>> childObjects = childNode.objects;
                     int childCount = childObjects.Count;
-                    for (int o = 0; o < childCount; o++)
+                    int o;
+                    for (o = 0; o < childCount; o++)
                         orphanObjects.Enqueue(childObjects[o]);
 
                     childExists = UnsetChild(childExists, i);
@@ -175,35 +244,14 @@ namespace UnityOctree
                     nodePool.Push(childNode);//Push node instance back to the pool
                     nodes.Remove(childCode);//Remove from dictionary
                 }
-
-                int itemCount = orphanObjects.Count;
-                while (itemCount > 0)
-                {
-                    branchItemCount--; //Items are now in this node which doesn't count towards our branch count
-                    PutObjectInNode(orphanObjects.Dequeue(), false);
-                    itemCount--;
-                }
-            }
-            public void SetAllChildBounds(bool recursive)
-            {
-                uint i;
-                Dictionary<uint, OctreeNode> nodes = tree.nodes;
-                for (i = 0; i < 8U; i++)
-                {
-                    OctreeNode childNode = nodes[ChildCode(locationCode, i)];
-                    SetChildBounds(childNode); //Set bounds of each of this node's children
-                    if (recursive)
-                    {
-                        if (childNode.childExists != 0) //Don't recurse into leaf nodes. They have no children to set
-                            childNode.SetAllChildBounds(true);//Recursive resize. Keep dropping down
-                    }
-                }
             }
 
-            //Re-set the bounds of child at index
-            private void SetChildBounds(OctreeNode childNode)
+            //Re-set the bounds of this node to fit the parent
+            private void ResetBounds()
             {
-                uint index = GetIndex(childNode.locationCode);
+                Debug.Assert(locationCode != 1, "Cannot call ResetBounds on root node.");
+                uint index = GetIndex(locationCode);
+                OctreeNode parentNode = tree.nodes[ParentCode(locationCode)];
                 //-X,-Y,+Z = 0+4+2=6
                 //+X,-Y,+Z = 1+4+2=7
                 //+X,+Y,+Z = 1+0+2=3
@@ -212,7 +260,7 @@ namespace UnityOctree
                 //+X,+Y,-Z = 1+0+0=1
                 //+X,-Y,-Z = 1+4+0=5
                 //-X,-Y,-Z = 0+4+0=4
-                float quarter = baseSize.x * .25F;
+                float quarter = parentNode.baseSize.x * .25F;
                 Vector3 pos = vCopy;
                 if (index == 4U || index == 5U || index == 7U || index == 6U)
                     pos.y = -quarter;
@@ -226,23 +274,34 @@ namespace UnityOctree
                     pos.x = -quarter;
                 else//(index == 5U || index == 1U || index == 3U || index == 7U)
                     pos.x = quarter;
-                pos.x += boundsCenter.x;
-                pos.y += boundsCenter.y;
-                pos.z += boundsCenter.z;
-                childNode.SetBounds(ref pos, baseSize * .5F, tree.looseness);
+                pos.x += parentNode.boundsCenter.x;
+                pos.y += parentNode.boundsCenter.y;
+                pos.z += parentNode.boundsCenter.z;
+                SetBounds(ref pos, parentNode.baseSize * .5F, tree.looseness);
             }
-
-            public bool RemoveObject(OctreeObject<T> obj)
+#if UNITY_EDITOR
+            private bool FindObjectInTree(OctreeObject<T> obj)
             {
-                bool removed;
-                if (removed = objects.Remove(obj))
+                foreach (KeyValuePair<uint, OctreeNode> node in tree.nodes)
                 {
-                    UpdateBranchCount(false);
-                    removed = true;
+                    if (node.Value.objects.Contains(obj))
+                        return true;
                 }
-                if(removed)
-                    tree.objectPool.Push(obj);
-                return removed;
+                return false;
+            }
+#endif
+            public void RemoveObject(OctreeObject<T> obj)
+            {
+                bool removed = objects.Remove(obj);
+                UpdateBranchCount(false);
+                tree.objectPool.Push(obj);
+#if UNITY_EDITOR
+                if (!removed)
+                {
+                    Debug.LogError("Failed to remove object. Did you call remove on an already-removed object? Found in tree: " + FindObjectInTree(obj));
+                    throw new System.InvalidOperationException();
+                }
+#endif
             }
         }
     }

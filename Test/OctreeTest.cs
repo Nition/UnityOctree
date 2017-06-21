@@ -15,6 +15,7 @@ namespace UnityOctree
         public bool drawNodes;
         public bool drawConnections;
         public bool drawObjects;
+        public bool drawLabels;
 
         LooseOctree<GameObject> tree = null;
         Queue<OctreeObject<GameObject>> treeObj = new Queue<OctreeObject<GameObject>>();
@@ -35,17 +36,17 @@ namespace UnityOctree
                 }
 
             }
-            tree = new LooseOctree<GameObject>(200F, Vector3.zero, 1.25F);
+            tree = new LooseOctree<GameObject>(200F, Vector3.zero, 1.5F);
             numObjectsDisplay.text = "Objects per iteration: " + positions.Count;
             float[] buildResults = new float[20];
             float buildTotal = 0;
             float[] destroyResults = new float[20];
             float destroyTotal = 0;
-            iterationsDisplay.text = "Iterations: " + buildResults.Length;
 
             Stopwatch timer = new Stopwatch();
             for (int i = 0; i < buildResults.Length; i++)
             {
+                iterationsDisplay.text = "Iterations: " + (i+1);
                 timer.Reset();
                 timer.Start();
                 PopulateTree();
@@ -59,6 +60,7 @@ namespace UnityOctree
                 timer.Stop();
                 destroyResults[i] = timer.ElapsedMilliseconds;
                 destroyTotal += destroyResults[i];
+                averageTimeDisplay.text = "Average time: Build(" + Mathf.Round(buildTotal/(i+1)) + "ms) - Destroy(" + Mathf.Round(destroyTotal / (i + 1)) + "ms)";
                 totalTimeDisplay.text = "Total time: Build(" + buildTotal + "ms) - Destroy(" + destroyTotal + "ms)";
                 yield return new WaitForSeconds(1F);
 
@@ -77,13 +79,13 @@ namespace UnityOctree
                 count++;
                 thisRun++;
                 treeObj.Enqueue(tree.Add(obj, ref pos));
-                if (thisRun == 4)
+                if (thisRun == 2000)
                 {
                     thisRun = 0;
                     yield return new WaitForEndOfFrame();
                 }
             }
-            tree.Print();
+            //tree.Print();
             thisRun = 0;
             while (treeObj.Count > 0)
             {
@@ -92,7 +94,7 @@ namespace UnityOctree
                     treeObj.Dequeue().Remove();
                     thisRun++;
                 }
-                if (thisRun == 4)
+                if (thisRun == 10)
                 {
                     thisRun = 0;
                     yield return new WaitForEndOfFrame();
@@ -103,7 +105,9 @@ namespace UnityOctree
         void PopulateTree()
         {
             GameObject obj = new GameObject("Dummy");
-            for (int i = 0; i < positions.Count; i++)
+            int i;
+            int count = positions.Count;
+            for (i = 0; i < count; i++)
             {
                 Vector3 pos = positions[i];
                 treeObj.Enqueue(tree.Add(obj, ref pos));
@@ -118,7 +122,7 @@ namespace UnityOctree
         private void OnDrawGizmos()
         {
             if (tree != null)
-                tree.DrawAll(drawNodes, drawObjects, drawConnections);
+                tree.DrawAll(drawNodes, drawObjects, drawConnections, drawLabels);
         }
         // Update is called once per frame
         void Update()
