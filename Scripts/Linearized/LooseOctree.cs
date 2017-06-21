@@ -41,9 +41,9 @@ namespace UnityOctree
             removals = orphanObjects;
             this.looseness = loosenessVal;
             rootNode = nodePool.Pop();
-            rootNode.Initialize(1U, this);
+            rootNode.Initialize(-1,this);
             rootNode.SetBounds(ref initialWorldPosition, Vector3.one * initialSize, looseness);
-            nodes[1U] = rootNode;
+            //nodes[1U] = rootNode;
         }
 
         public int NodeCount()
@@ -75,49 +75,9 @@ namespace UnityOctree
             return newObj;
         }
 
-        /// <summary>
-        /// Prints out the entire tree structure. Careful, this is SLOW as it may print tens of thousands of lines if the tree is big.
-        /// </summary>
-        public void Print()
-        {
-            Debug.Log("---------------------------------------------------------------------------");
-
-            foreach (KeyValuePair<uint, OctreeNode> node in nodes)
-            {
-                Debug.LogFormat("|---Depth({0})---Location(X{1} Y{2} Z{3})---Size({4})---Index({5})---Objects( Here:{6} Branch:{7})---|", GetDepth(node.Key), node.Value.boundsCenter.x, node.Value.boundsCenter.y, node.Value.boundsCenter.z, node.Value.boundsSize.x, GetIndex(node.Key), node.Value.objects.Count, node.Value.branchItemCount);
-            }
-
-            Debug.Log("---------------------------------------------------------------------------");
-        }
         public void DrawAll(bool drawNodes, bool drawObjects, bool drawConnections, bool drawLabels)
         {
-
-            foreach (KeyValuePair<uint, OctreeNode> node in nodes)
-            {
-                float tintVal = GetDepth(node.Key) / 7F; // Will eventually get values > 1. Color rounds to 1 automatically
-                Gizmos.color = new Color(tintVal, 0F, 1.0f - tintVal);
-                if (drawNodes)
-                    Gizmos.DrawWireCube(node.Value.boundsCenter, node.Value.boundsSize);
-#if UNITY_EDITOR
-                if (drawLabels)
-                    UnityEditor.Handles.Label(node.Value.boundsCenter, "Depth("+System.Convert.ToString(GetDepth(node.Value.locationCode)) + ") : Branch(" + System.Convert.ToString(node.Value.branchItemCount) +") : Here("+node.Value.localItemCount+")");
-#endif
-                Gizmos.color = new Color(tintVal, GetIndex(node.Key) / 7F, 1.0f - tintVal);
-                foreach (OctreeObject<T> obj in node.Value.objects)
-                {
-                    if (drawObjects)
-                    {
-                        if (obj.isPoint)
-                            Gizmos.DrawSphere(obj.boundsCenter, 0.25F);
-                        else
-                            Gizmos.DrawCube(obj.boundsCenter, obj.boundsSize);
-                    }
-                    if (drawConnections)
-                        Gizmos.DrawLine(node.Value.boundsCenter, obj.boundsCenter);
-                }
-            }
-
-            Gizmos.color = Color.white;
+            rootNode.DrawNode(true, drawNodes, drawObjects, drawConnections, drawLabels);
         }
 
 

@@ -89,7 +89,7 @@ namespace UnityOctree
             //    timer.Stop();
             //}
             //pointTreeRemoveTimeDisplay.text = timer.ElapsedMilliseconds + "ms";
-            averageTimeDisplay.text = "Average time: Build(" + buildTotal / buildResults.Length + "ms) - Destroy(" + destroyTotal / destroyResults.Length + "ms)";
+            //averageTimeDisplay.text = "Average time: Build(" + buildTotal / buildResults.Length + "ms) - Destroy(" + destroyTotal / destroyResults.Length + "ms)";
             StartCoroutine(PopulateTreeSlow());
         }
         IEnumerator PopulateTreeSlow()
