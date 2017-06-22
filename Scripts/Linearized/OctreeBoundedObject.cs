@@ -125,9 +125,9 @@ namespace UnityOctree
             public bool IntersectRayFat(ref Ray ray, float maxDistance, out float distance)
             {
                 Vector3 minBounds = vCopy;
-                minBounds.x = boundsMin.x + maxDistance;
-                minBounds.y = boundsMin.y + maxDistance;
-                minBounds.z = boundsMin.z + maxDistance;
+                minBounds.x = boundsMin.x - maxDistance;
+                minBounds.y = boundsMin.y - maxDistance;
+                minBounds.z = boundsMin.z - maxDistance;
                 Vector3 maxBounds = vCopy;
                 maxBounds.x = boundsMax.x + maxDistance;
                 maxBounds.y = boundsMax.y + maxDistance;
@@ -199,8 +199,5 @@ namespace UnityOctree
             }
         }
     }
-
-
-
 }
 

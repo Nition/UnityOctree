@@ -81,14 +81,14 @@ namespace UnityOctree
             private void ChildHasObjects(int index, bool set)
             {
                 if (set)
-                    childHasObjects = SetChild(childHasObjects, index);
+                    childHasObjects |= 1 << (index + 1);
                 else
-                    childHasObjects = UnsetChild(childHasObjects, index);
+                    childHasObjects &= ~1 << (index + 1);
 
             }
             private bool ChildHasObjects(int index)
             {
-                return CheckChild(childHasObjects, index);
+                return (childHasObjects & 1 << (index + 1)) != 0;
             }
 
             //Adds a child node at index. If any existing objects fit, moves them into it
@@ -269,7 +269,7 @@ namespace UnityOctree
                 {
                     if (addedItem)
                         parentNode.branchItemCount++;
-                    else if (parentNode.branchItemCount-- + parentNode.localItemCount <= numObjectsAllowed)
+                    else if ((parentNode.branchItemCount -=1) + parentNode.localItemCount <= numObjectsAllowed)
                         topLevel = parentNode; //Record our path as long as we're not above the item limit
 
                     if (parentNode.childIndex == -1)
@@ -334,32 +334,55 @@ namespace UnityOctree
             //Re-set the bounds of this node to fit the parent
             private void ResetBounds()
             {
-                Debug.Assert(childIndex != -11, "Cannot call ResetBounds on root node.");
-                //-X,-Y,+Z = 0+4+2=6
-                //+X,-Y,+Z = 1+4+2=7
-                //+X,+Y,+Z = 1+0+2=3
-                //-X,+Y,+Z = 0+0+2=2
-                //-X,+Y,-Z = 0+0+0=0
-                //+X,+Y,-Z = 1+0+0=1
-                //+X,-Y,-Z = 1+4+0=5
-                //-X,-Y,-Z = 0+4+0=4
+                Debug.Assert(childIndex != -1, "Cannot call ResetBounds on root node.");
                 Vector3 parentBase = parent.baseSize;
                 Vector3 parentCenter = parent.boundsCenter;
                 float quarter = parentBase.x * .25F;
                 Vector3 pos = vCopy;
                 int index = childIndex;
-                if (index == 4U || index == 5U || index == 7U || index == 6U)
-                    pos.y = -quarter;
-                else//(index == 1U || index == 0U || index == 2U || index == 3U)
-                    pos.y = quarter;
-                if (index == 4U || index == 5U || index == 1U || index == 0U)
-                    pos.z = -quarter;
-                else//(index == 2U || index == 3U || index == 7U || index == 6U)
-                    pos.z = quarter;
-                if (index == 4U || index == 0U || index == 2U || index == 6U)
-                    pos.x = -quarter;
-                else//(index == 5U || index == 1U || index == 3U || index == 7U)
-                    pos.x = quarter;
+                switch (childIndex)
+                {
+                    case (0)://-X,+Y,-Z = 0+0+0=0
+                        pos.x = -quarter;
+                        pos.y = quarter;
+                        pos.z = -quarter;
+                        break;
+                    case (1)://+X,+Y,-Z = 1+0+0=1
+                        pos.x = quarter;
+                        pos.y = quarter;
+                        pos.z = -quarter;
+                        break;
+                    case (2)://-X,+Y,+Z = 0+0+2=2
+                        pos.x = -quarter;
+                        pos.y = quarter;
+                        pos.z = quarter;
+                        break;
+                    case (3)://+X,+Y,+Z = 1+0+2=3
+                        pos.x = quarter;
+                        pos.y = quarter;
+                        pos.z = quarter;
+                        break;
+                    case (4)://-X,-Y,-Z = 0+4+0=4
+                        pos.x = -quarter;
+                        pos.y = -quarter;
+                        pos.z = -quarter;
+                        break;
+                    case (5)://+X,-Y,-Z = 1+4+0=5
+                        pos.x = quarter;
+                        pos.y = -quarter;
+                        pos.z = -quarter;
+                        break;
+                    case (6)://-X,-Y,+Z = 0+4+2=6
+                        pos.x = -quarter;
+                        pos.y = -quarter;
+                        pos.z = quarter;
+                        break;
+                    case (7)://+X,-Y,+Z = 1+4+2=7
+                        pos.x = quarter;
+                        pos.y = -quarter;
+                        pos.z = quarter;
+                        break;
+                }
                 pos.x += parentCenter.x;
                 pos.y += parentCenter.y;
                 pos.z += parentCenter.z;
@@ -383,8 +406,7 @@ namespace UnityOctree
             public void RemoveObject(OctreeObject<T> obj)
             {
                 bool removed = objects.Remove(obj);
-                localItemCount--;
-                if (localItemCount == 0 && childIndex != -1) //Let our parent know we ran out of objects
+                if ((localItemCount-=1) == 0 && childIndex != -1) //Let our parent know we ran out of objects
                     parent.ChildHasObjects(childIndex, false);
                 UpdateBranchCount(false);
                 tree.objectPool.Push(obj);

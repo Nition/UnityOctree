@@ -7,6 +7,7 @@ namespace UnityOctree
     {
         public T obj; //Object reference held by this instance
         public bool isPoint; //Point data only, ignore extents
+        public int listIndex;
         private LooseOctree<T>.OctreeNode node; //Reference to the node this object is held by
 
         public void SetNode(LooseOctree<T>.OctreeNode node)

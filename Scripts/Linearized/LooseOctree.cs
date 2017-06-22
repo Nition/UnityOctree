@@ -29,6 +29,7 @@ namespace UnityOctree
         private readonly Vector3 vCopy = new Vector3(); //Micro optimization. Empty V3 to avoid calling constructor
         private Vector3 pointSize = Vector3.zero; //Default size for point types
         private readonly float looseness;
+        public int nodeCount { get; private set; }
 
         public LooseOctree(float initialSize, Vector3 initialWorldPosition, float loosenessVal,int estimatedMaxObjectCount)
         {
