@@ -6,23 +6,18 @@ namespace UnityOctree
 {
     public class ObjectPool<T> where T : class, new()
     {
-        private Stack<T> pool = new Stack<T>();
-        private int poolCount = 0;
+        Queue<T> pool = new Queue<T>();
         public ObjectPool(int initialSize)
         {
             for (int i = 0; i <= initialSize; i++)
-            {
-                poolCount++;
-                pool.Push(new T());
-            }
+                pool.Enqueue(new T());
         }
         public T Pop()
         {
             T obj;
-            if (poolCount > 0)
+            if (pool.Count > 0)
             {
-                obj = pool.Pop();
-                poolCount--;
+                obj = pool.Dequeue();
             }
             else
             {
@@ -32,8 +27,7 @@ namespace UnityOctree
         }
         public void Push(T obj)
         {
-            poolCount++;
-            pool.Push(obj);
+            pool.Enqueue(obj);
         }
     }
 }

@@ -8,9 +8,9 @@ namespace UnityOctree
         public partial class OctreeNode : OctreeBoundedObject
         {
             LooseOctree<T> tree;
-            //public List<OctreeObject<T>> objects = new List<OctreeObject<T>>(numObjectsAllowed * 2);
-            public OctreeObject<T>[] objects = new OctreeObject<T>[numObjectsAllowed];
-            Stack<OctreeObject<T>> orphanObjects;
+            public List<OctreeObject<T>> objects = new List<OctreeObject<T>>(numObjectsAllowed * 2);
+            Queue<OctreeObject<T>> orphanObjects;
+            Queue<OctreeObject<T>> removals;
             OctreeNode parent; //This node's immediate parent
             OctreeNode[] children = new OctreeNode[8];
             int childIndex = -1;
@@ -18,7 +18,7 @@ namespace UnityOctree
             int localItemCount = 0;
             int treeDepth = 0;
             bool isLeaf; //Leaves have no children
-            private int childHasObjects; //Bitmask for child nodes
+            private int childHasObjects = 0; //Bitmask for child nodes
             public void Initialize(int index, LooseOctree<T> tree, OctreeNode parent)
             {
                 Initialize(index, tree);
@@ -28,9 +28,9 @@ namespace UnityOctree
             public void Initialize(int index, LooseOctree<T> tree)
             {
                 orphanObjects = tree.orphanObjects;
+                removals = tree.removals;
                 branchItemCount = 0;
                 localItemCount = 0;
-                treeDepth = 0;
                 childHasObjects = 0;
                 parent = null;
                 isLeaf = true;
@@ -62,7 +62,7 @@ namespace UnityOctree
                     UnityEditor.Handles.Label(boundsCenter, "Depth(" + treeDepth + ") : Branch(" + branchItemCount + ") : Here(" + localItemCount + ")");
 #endif
                 Gizmos.color = new Color(tintVal, childIndex / 7F, 1.0f - tintVal);
-                for (int o = 0; o < localItemCount; o++)
+                for (int o = 0; o < objects.Count; o++)
                 {
                     OctreeObject<T> obj = objects[o];
                     if (drawObjects)
@@ -81,16 +81,14 @@ namespace UnityOctree
             private void ChildHasObjects(int index, bool set)
             {
                 if (set)
-                    childHasObjects |= 1 << (index + 1);
+                    childHasObjects = SetChild(childHasObjects, index);
                 else
-                    childHasObjects &= ~1 << (index + 1);
-
-                Debug.Assert(ChildHasObjects(index) == set, "Setting mask failed");
+                    childHasObjects = UnsetChild(childHasObjects, index);
 
             }
             private bool ChildHasObjects(int index)
             {
-                return (childHasObjects & 1 << (index + 1)) != 0;
+                return CheckChild(childHasObjects, index);
             }
 
             //Adds a child node at index. If any existing objects fit, moves them into it
@@ -98,10 +96,9 @@ namespace UnityOctree
             {
                 Debug.Assert(isLeaf, "Trying to split a non-leaf node.");
                 //Debug.Assert(GetDepth(locationCode) < maxDepth, "Max depth reached. This will cause integer overflow. Recommend increasing numObjectsAllowed or switching to 64bit integers.");
-                //Debug.Assert(removals.Count == 0, "removals queue is not empty when it should be");
+                Debug.Assert(removals.Count == 0, "removals queue is not empty when it should be");
 
-                int objCount = 0;
-                int i, index;
+                int objCount, i, index;
                 OctreeNode childNode;
                 for (index = 0; index < 8; index++)
                 {
@@ -110,41 +107,46 @@ namespace UnityOctree
                     children[index] = childNode;
                     childNode.ResetBounds();
                 }
-                tree.nodeCount += 8;
+
                 if (localItemCount > 0) //Place objects into the new nodes
                 {
                     for (i = 0; i < localItemCount; i++)
                     {
                         OctreeObject<T> obj;
                         childNode = children[BestFitChild(ref (obj = objects[i]).boundsCenter)];
-                        Debug.Assert(obj != null, "Attempting to split null object into child node");
                         if (childNode.ContainsBounds(ref obj.boundsMin, ref obj.boundsMax))//Make sure the object fits in the new location. Otherwise keep it here
                         {
                             childNode.PutObjectInNode(obj, false);
                             ChildHasObjects(index, true);
-                            objCount++;
-                            //removals.Push(obj);
+                            removals.Enqueue(obj);
                         }
                     }
                 }
 
+                objCount = removals.Count;
                 branchItemCount += objCount;//Item was added below us, so our branch count needs to go up
                 localItemCount -= objCount;
                 if (localItemCount == 0)
                 {//Let our parent know we ran out of objects
-                    if (childIndex != -1)
-                        parent.ChildHasObjects(childIndex, false);
-                    //objects.Clear(); //We moved everything
+                    if(childIndex != -1)
+                        parent.ChildHasObjects(index, false);
+                    objects.Clear(); //We moved everything
+                    removals.Clear();
                 }
-                //else
-                //{
-                //    while (objCount > 0)
-                //    {
-                //        objects[removals.Pop().listIndex] = null;
-                //        objCount--;
-                //    }
-                //}
+                else
+                {
+                    while (objCount > 0)
+                    {
+                        objects.Remove(removals.Dequeue());
+                        objCount--;
+                    }
+                }
                 isLeaf = false; //We are now a branch
+            }
+
+            int BestFitChild(OctreeObject<T> obj)
+            {
+                return BestFitChild(ref obj.boundsCenter);
             }
 
             int BestFitChild(ref Vector3 objCenter)
@@ -161,7 +163,7 @@ namespace UnityOctree
                 int itemCount = orphanObjects.Count;
                 while (itemCount > 0)
                 {
-                    if (!rootNode.TryAddObj(orphanObjects.Pop(), true))
+                    if (!rootNode.TryAddObj(orphanObjects.Dequeue(), true))
                     {
                         Debug.LogError("Rebuild failed. Could not re-add objects");
                         return;
@@ -174,6 +176,33 @@ namespace UnityOctree
             private bool FindFittingNode(ref Vector3 center, ref Vector3 minBounds, ref Vector3 maxBounds, out OctreeNode node)
             {
                 node = null;
+                if (!ContainsBounds(ref minBounds, ref maxBounds))
+                    return false;
+
+                OctreeNode childNode;
+                var nodes = tree.nodes;
+                bool firstLoop = true;
+                //    while (nodes.TryGetValue(childCode, out childNode))
+                {
+                    //    if (!firstLoop && !childNode.ContainsBounds(ref minBounds, ref maxBounds))
+                    { //Doesn't fit in this node. Put it in the parent node. If it's the firstLoop, we already checked this.
+                      //             node = childNode.parent;
+                        return true;
+                    }
+
+                    if (!childNode.isLeaf)
+                    { //Drop down another level if we have a valid child
+                      //          childCode = ChildCode(childCode, childNode.BestFitChild(ref center));
+                    }
+                    else
+                    { //No children
+                        node = childNode;
+                        return true;
+                    }
+
+                    firstLoop = false;
+                }
+
                 return false;
             }
             /// <summary>
@@ -186,7 +215,7 @@ namespace UnityOctree
                 while (true)
                 {
                     if (!childNode.ContainsBounds(ref newObj.boundsMin, ref newObj.boundsMax))
-                    { //Doesn't fit in this node. Put it in the parent node.
+                    { //Doesn't fit in this node. Put it in the parent node. If it's the firstLoop, we already checked this.
                         if (childNode.childIndex == -1)
                             return false;
                         childNode.parent.PutObjectInNode(newObj, updateCount);
@@ -211,17 +240,8 @@ namespace UnityOctree
 
             private void PutObjectInNode(OctreeObject<T> obj, bool updateCount)
             {
-                Debug.Assert(obj != null, "Attempting to put null into node");
                 obj.SetNode(this);
-                int i = 0;
-                for (i=0; i <= localItemCount; i++)
-                {//Find the first empty slot
-                    if (objects[i] == null)
-                    break;
-                }
-                objects[i] = obj;
-                obj.listIndex = i;
-                Debug.Assert(localItemCount >= 0, "localItemCount is negative");
+                objects.Add(obj);
 
                 if (localItemCount == 0 && childIndex != -1) //Let our parent know we have objects
                     parent.ChildHasObjects(childIndex, true);
@@ -234,7 +254,7 @@ namespace UnityOctree
 
             /// <summary>
             /// Traverse up the tree and update counts for all nodes.
-            /// If a branch has < numObjectsAllowed in it, it will be merged
+            /// If a branch has zero objects in it, it will be merged
             /// </summary>
             /// <param name="addedItem"></param>
             public void UpdateBranchCount(bool addedItem)
@@ -244,6 +264,7 @@ namespace UnityOctree
 
                 OctreeNode parentNode = parent;
                 OctreeNode topLevel = null;
+                var nodes = tree.nodes;
                 while (true)
                 {
                     if (addedItem)
@@ -259,7 +280,7 @@ namespace UnityOctree
 #if UNITY_EDITOR
                 if (parentNode == null)
                 {
-                    Debug.Assert(parentNode != null, "parentNode is null. This shouldn't happen");
+                    Debug.Assert(parentNode != null, "ParentNode is null. This shouldn't happen");
                     throw new System.InvalidOperationException();
                 }
 #endif
@@ -271,8 +292,7 @@ namespace UnityOctree
                     topLevel.branchItemCount -= objCount; //Items are now in this node which doesn't count towards our branch count
                     while (objCount > 0)
                     {
-                        Debug.Assert(orphanObjects.Peek() != null, "Null object in orphanObjects");
-                        topLevel.PutObjectInNode(orphanObjects.Pop(), false);
+                        topLevel.PutObjectInNode(orphanObjects.Dequeue(), false);
                         objCount--;
                     }
                     Debug.Assert(localItemCount <= numObjectsAllowed, "Merged too many objects into one node!");
@@ -284,30 +304,29 @@ namespace UnityOctree
                 if (isLeaf)//No children to merge
                     return;
 
-                OctreeNode childNode;
                 int index;
+                var nodes = tree.nodes;
+                ObjectPool<OctreeNode> nodePool = tree.nodePool;
                 for (index = 0; index < 8; index++)
                 {
-                    if (!(childNode = children[index]).isLeaf)
+                    uint childCode;
+                    OctreeNode childNode = children[index];
+                    if (!childNode.isLeaf)
                         childNode.MergeNode();
                     if (childHasObjects != 0 && ChildHasObjects(index))
                     {
-                        Debug.Assert(childNode.localItemCount != 0, "Node item count does not match mask. Showing " + childNode.localItemCount + " objects with a mask of " + childHasObjects);
+                        Debug.Assert(childNode.objects.Count > 0, "Attempting to merge child with no objects");
                         //Add objects to orphaned list
+                        List<OctreeObject<T>> childObjects = childNode.objects;
                         int childCount = childNode.localItemCount;
-                        int i;
-                        for (i = 0; i < childCount; i++)
-                        {
-                            Debug.Log(objects[i] + " : " + i);
-                            Debug.Assert(objects[i] != null, "Null object found in node's list");
-                            Debug.Assert(orphanObjects.Count > 0 && orphanObjects.Peek() != null, "Pushed null onto orphan queue");
-                            orphanObjects.Push(childNode.objects[i]);
-                        }
-                        //childNode.objects.Clear();//Clear out list
+                        int o;
+                        for (o = 0; o < childCount; o++)
+                            orphanObjects.Enqueue(childObjects[o]);
+
+                        childObjects.Clear();//Clear out list
                     }
-                    tree.nodePool.Push(childNode);//Push node instance back to the pool
+                    nodePool.Push(childNode);//Push node instance back to the pool
                 }
-                tree.nodeCount -= 8;
                 childHasObjects = 0; //Children are all gone
                 isLeaf = true; //We are now a leaf
             }
@@ -316,54 +335,31 @@ namespace UnityOctree
             private void ResetBounds()
             {
                 Debug.Assert(childIndex != -11, "Cannot call ResetBounds on root node.");
+                //-X,-Y,+Z = 0+4+2=6
+                //+X,-Y,+Z = 1+4+2=7
+                //+X,+Y,+Z = 1+0+2=3
+                //-X,+Y,+Z = 0+0+2=2
+                //-X,+Y,-Z = 0+0+0=0
+                //+X,+Y,-Z = 1+0+0=1
+                //+X,-Y,-Z = 1+4+0=5
+                //-X,-Y,-Z = 0+4+0=4
                 Vector3 parentBase = parent.baseSize;
                 Vector3 parentCenter = parent.boundsCenter;
                 float quarter = parentBase.x * .25F;
                 Vector3 pos = vCopy;
                 int index = childIndex;
-                switch (childIndex)
-                {
-                    case (0)://-X,+Y,-Z = 0+0+0=0
-                        pos.x = -quarter;
-                        pos.y = quarter;
-                        pos.z = -quarter;
-                        break;
-                    case (1)://+X,+Y,-Z = 1+0+0=1
-                        pos.x = quarter;
-                        pos.y = quarter;
-                        pos.z = -quarter;
-                        break;
-                    case (2)://-X,+Y,+Z = 0+0+2=2
-                        pos.x = -quarter;
-                        pos.y = quarter;
-                        pos.z = quarter;
-                        break;
-                    case (3)://+X,+Y,+Z = 1+0+2=3
-                        pos.x = quarter;
-                        pos.y = quarter;
-                        pos.z = quarter;
-                        break;
-                    case (4)://-X,-Y,-Z = 0+4+0=4
-                        pos.x = -quarter;
-                        pos.y = -quarter;
-                        pos.z = -quarter;
-                        break;
-                    case (5)://+X,-Y,-Z = 1+4+0=5
-                        pos.x = quarter;
-                        pos.y = -quarter;
-                        pos.z = -quarter;
-                        break;
-                    case (6)://-X,-Y,+Z = 0+4+2=6
-                        pos.x = -quarter;
-                        pos.y = -quarter;
-                        pos.z = quarter;
-                        break;
-                    case (7)://+X,-Y,+Z = 1+4+2=7
-                        pos.x = quarter;
-                        pos.y = -quarter;
-                        pos.z = quarter;
-                        break;
-                }
+                if (index == 4U || index == 5U || index == 7U || index == 6U)
+                    pos.y = -quarter;
+                else//(index == 1U || index == 0U || index == 2U || index == 3U)
+                    pos.y = quarter;
+                if (index == 4U || index == 5U || index == 1U || index == 0U)
+                    pos.z = -quarter;
+                else//(index == 2U || index == 3U || index == 7U || index == 6U)
+                    pos.z = quarter;
+                if (index == 4U || index == 0U || index == 2U || index == 6U)
+                    pos.x = -quarter;
+                else//(index == 5U || index == 1U || index == 3U || index == 7U)
+                    pos.x = quarter;
                 pos.x += parentCenter.x;
                 pos.y += parentCenter.y;
                 pos.z += parentCenter.z;
@@ -376,28 +372,33 @@ namespace UnityOctree
 #if UNITY_EDITOR
             private bool FindObjectInTree(OctreeObject<T> obj)
             {
-                //foreach (KeyValuePair<uint, OctreeNode> node in tree.nodes)
-                //{
-                //    if (node.Value.objects.Contains(obj))
-                //        return true;
-                //}
+                foreach (KeyValuePair<uint, OctreeNode> node in tree.nodes)
+                {
+                    if (node.Value.objects.Contains(obj))
+                        return true;
+                }
                 return false;
             }
 #endif
             public void RemoveObject(OctreeObject<T> obj)
             {
-                //Debug.Assert(objects.Contains(obj), "Object is not in this node");
-                //Debug.Assert(objects.IndexOf(obj) == obj.listIndex,"Object index does not match");
-                //Debug.Log(objects.IndexOf(obj) + " : " + obj.listIndex);
-                if (localItemCount-- == 0 && childIndex != -1) //Let our parent know we ran out of objects
+                bool removed = objects.Remove(obj);
+                localItemCount--;
+                if (localItemCount == 0 && childIndex != -1) //Let our parent know we ran out of objects
                     parent.ChildHasObjects(childIndex, false);
-
-                objects[obj.listIndex] = null;
                 UpdateBranchCount(false);
                 tree.objectPool.Push(obj);
 #if UNITY_EDITOR
                 if (childIndex == -1 && isLeaf == true)
+                {
+                    Debug.Assert(tree.nodes.Count == 1, "Node count >1, orphaned nodes in tree.");
                     Debug.Assert(branchItemCount == 0, "Root has a branch count but it has no children.");
+                }
+                if (!removed)
+                {
+                    Debug.LogError("Failed to remove object. Did you call remove on an already-removed object? Found in tree: " + FindObjectInTree(obj));
+                    throw new System.InvalidOperationException();
+                }
 #endif
             }
         }
