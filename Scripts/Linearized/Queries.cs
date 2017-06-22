@@ -72,13 +72,13 @@ namespace UnityOctree
                 }
 
                 // Check against any objects in this node
-                for (int i = 0; i < objects.Count; i++)
-                {
-                    if (objects[i].IntersectBounds(ref min, ref max))
-                    {
-                        return true;
-                    }
-                }
+                //for (int i = 0; i < objects.Count; i++)
+                //{
+                //    if (objects[i].IntersectBounds(ref min, ref max))
+                //    {
+                //        return true;
+                //    }
+                //}
 
                 // Check children
                 //if (children != null)
@@ -111,13 +111,13 @@ namespace UnityOctree
                 }
 
                 // Check against any objects in this node
-                for (int i = 0; i < objects.Count; i++)
-                {
-                    if (objects[i].IntersectRay(ref checkRay, out distance) && distance <= maxDistance)
-                    {
-                        return true;
-                    }
-                }
+                //for (int i = 0; i < objects.Count; i++)
+                //{
+                //    if (objects[i].IntersectRay(ref checkRay, out distance) && distance <= maxDistance)
+                //    {
+                //        return true;
+                //    }
+                //}
 
                 // Check children
                 //if (children != null)
@@ -151,13 +151,13 @@ namespace UnityOctree
                 }
 
                 // Check against any objects in this node
-                for (int i = 0; i < objects.Count; i++)
-                {
-                    if (objects[i].IntersectBounds(ref min, ref max))
-                    {
-                        result.Add(objects[i].obj);
-                    }
-                }
+                //for (int i = 0; i < objects.Count; i++)
+                //{
+                //    if (objects[i].IntersectBounds(ref min, ref max))
+                //    {
+                //        result.Add(objects[i].obj);
+                //    }
+                //}
 
                 // Check children
                 //if (children != null)
@@ -186,13 +186,13 @@ namespace UnityOctree
                 }
 
                 // Check against any objects in this node
-                for (int i = 0; i < objects.Count; i++)
-                {
-                    if (objects[i].IntersectRay(ref checkRay, out distance) && distance <= maxDistance)
-                    {
-                        result.Add(objects[i].obj);
-                    }
-                }
+                //for (int i = 0; i < objects.Count; i++)
+                //{
+                //    if (objects[i].IntersectRay(ref checkRay, out distance) && distance <= maxDistance)
+                //    {
+                //        result.Add(objects[i].obj);
+                //    }
+                //}
 
                 // Check children
                 //if (children != null)
@@ -220,13 +220,13 @@ namespace UnityOctree
                 }
 
                 // Check against any objects in this node
-                for (int i = 0; i < objects.Count; i++)
-                {
-                    if (SqrDistanceToRay(ray, objects[i].boundsCenter) <= (maxDistance * maxDistance))
-                    {
-                        result.Add(objects[i].obj);
-                    }
-                }
+                //for (int i = 0; i < objects.Count; i++)
+                //{
+                //    if (SqrDistanceToRay(ray, objects[i].boundsCenter) <= (maxDistance * maxDistance))
+                //    {
+                //        result.Add(objects[i].obj);
+                //    }
+                //}
 
                 // Check children
                 // if (children != null)
