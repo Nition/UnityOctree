@@ -1,25 +1,33 @@
 ﻿using System.Collections.Generic;
 namespace UnityOctree
 {
-    class OctreeObjectList<T> where T : class
+    public class OctreeObjectList<T> where T : class
     {
         private OctreeObject<T>[] entries; //Objects
-        private bool[] available; //List of available indices
+        private Stack<int> available; //List of available indices
 
-        private int nextEntryIndex = -1; //Index to store the next item
+        int availableCount;
         public int count; //Count of active objects
-
+        int maxSize;
+        int curSize;
         public OctreeObjectList(int size)
         {
-            available = new bool[size];
+            maxSize = size;
+            available = new Stack<int>(size);
             entries = new OctreeObject<T>[size];
+            Clear();
         }
 
         public void Clear()
         {
-            nextEntryIndex = -1; //Start adding from the front
-            for (int i = 0; i < available.Length; i++)
-                available[i] = true;
+            available.Clear();
+            int i;
+            for (i = maxSize - 1; i >= 0; i--)
+            {
+                available.Push(i);
+                entries[i] = null;
+            }
+            availableCount = maxSize;
             count = 0;
         }
 
@@ -31,43 +39,23 @@ namespace UnityOctree
                 stack.Push(obj);
         }
 
-        int dirtyCount = 0;
         /// <summary>
         /// Add an object
         /// </summary>
         public int Add(OctreeObject<T> obj)
         {
-            int index;
-            if (dirtyCount > 0)
-            {
-                index = GetAvailableIndex();
-                dirtyCount--;
-            }
-            else
-            {
-                index = nextEntryIndex;
-                nextEntryIndex++;
-            }
-
+            int index = available.Pop();
             entries[index] = obj;
             obj.listIndex = index;
             count++;
             return index;
         }
 
-        private int GetAvailableIndex()
-        {
-            int index = 0;
-            while (available[index] == false)
-                index++;
-
-            return index;
-        }
-
         public void Remove(OctreeObject<T> obj)
         {
-            available[obj.listIndex] = true; //Record this index as available
-            dirtyCount++;
+            int index;
+            available.Push(index = obj.listIndex);
+            entries[index] = null;
             count--;
         }
 
@@ -84,7 +72,7 @@ namespace UnityOctree
         public bool GetNext(out OctreeObject<T> obj)
         {
             obj = null;
-            while (curPos < nextEntryIndex && available[curPos] == true)
+            while (curPos < maxSize && entries[curPos] == null)
                 curPos++;
 
             if ((obj = entries[curPos]) != null)
@@ -95,12 +83,16 @@ namespace UnityOctree
 
         public OctreeObject<T> GetAt(int index)
         {
-            while (index < nextEntryIndex && available[index] == true)
-                index++; //Loop forward until we find an index that is not available
+            while (index < maxSize && entries[index] == null)
+                index++; //Loop forward until we find an index that is valid
 
             return entries[index];
         }
-
+        public void PutAt(OctreeObject<T> obj,int index)
+        {
+            obj.listIndex = index;
+            entries[index] = obj;
+        }
         public OctreeObject<T> this[int index]
         {
             get
@@ -109,7 +101,7 @@ namespace UnityOctree
             }
             set
             {
-                entries[index] = value;
+                PutAt(value, index);
             }
         }
     }

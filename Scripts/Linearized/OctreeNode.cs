@@ -243,11 +243,11 @@ namespace UnityOctree
                 obj.SetNode(this);
                 objects.Add(obj);
 
+                Debug.Assert(localItemCount <= numObjectsAllowed, "Too many objects in node");
                 if (localItemCount == 0 && childIndex != -1) //Let our parent know we have objects
                     parent.ChildHasObjects(childIndex, true);
 
                 localItemCount++;
-
                 if (updateCount)
                     UpdateBranchCount(true);
             }
@@ -289,6 +289,7 @@ namespace UnityOctree
                 {
                     topLevel.MergeNode();
                     int objCount = orphanObjects.Count;
+                    Debug.Assert(objCount <= numObjectsAllowed, "Attempting to merge too many objects " + objCount + " with a branch count of " + topLevel.branchItemCount);
                     topLevel.branchItemCount -= objCount; //Items are now in this node which doesn't count towards our branch count
                     while (objCount > 0)
                     {
