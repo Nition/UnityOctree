@@ -51,45 +51,40 @@ namespace UnityOctree
             for (int i = 0; i < buildResults.Length; i++)
             {
                 iterationsDisplay.text = "Iterations: " + (i + 1);
-                timer.Reset();
-                timer.Start();
-                PopulateTree();
+                buildResults[i] = PopulateTree(timer);
                 timer.Stop();
-                buildResults[i] = timer.ElapsedMilliseconds;
                 buildTotal += buildResults[i];
                 numNodesDisplay.text = "Nodes per iteration: " + tree.nodeCount;
-                timer.Reset();
-                timer.Start();
-                DestroyTree();
-                timer.Stop();
-                destroyResults[i] = timer.ElapsedMilliseconds;
+                destroyResults[i] = DestroyTree(timer);
                 destroyTotal += destroyResults[i];
                 averageTimeDisplay.text = "Average time: Build(" + Mathf.Round(buildTotal / (i + 1)) + "ms) - Destroy(" + Mathf.Round(destroyTotal / (i + 1)) + "ms)";
                 totalTimeDisplay.text = "Total time: Build(" + buildTotal + "ms) - Destroy(" + destroyTotal + "ms)";
                 yield return new WaitForSeconds(0.1F);
             }
-            //PopulateTree();
-            // pointTree = new PointOctree<OctreeObject<GameObject>>(200F,Vector3.zero,1.25F);
-            //OctreeObject<GameObject> obj;
-            //Queue<OctreeObject<GameObject>> remObj = new Queue<OctreeObject<GameObject>>();
-            //timer.Reset();
-            //while (treeObj.Count > 0)
-            //{
-            //    timer.Start();
-            //    pointTree.Add(obj = treeObj.Dequeue(), obj.boundsCenter);
-            //    timer.Stop();
-            //    remObj.Enqueue(obj);
-            //}
-            //pointTreeAddTimeDisplay.text = timer.ElapsedMilliseconds + "ms";
-            //timer.Reset();
-            //while(remObj.Count > 0)
-            //{
-            //    timer.Start();
-            //    pointTree.Remove(remObj.Dequeue());
-            //    timer.Stop();
-            //}
-            //pointTreeRemoveTimeDisplay.text = timer.ElapsedMilliseconds + "ms";
-            //averageTimeDisplay.text = "Average time: Build(" + buildTotal / buildResults.Length + "ms) - Destroy(" + destroyTotal / destroyResults.Length + "ms)";
+            PopulateTree(timer);
+            pointTree = new PointOctree<OctreeObject<GameObject>>(200F,Vector3.zero,1.25F);
+            OctreeObject<GameObject> obj;
+            Queue<OctreeObject<GameObject>> remObj = new Queue<OctreeObject<GameObject>>();
+            timer.Reset();
+            while (treeObj.Count > 0)
+            {
+                obj = treeObj.Dequeue();
+                timer.Start();
+                pointTree.Add(obj, obj.boundsCenter);
+                timer.Stop();
+                remObj.Enqueue(obj);
+            }
+            pointTreeAddTimeDisplay.text = timer.ElapsedMilliseconds + "ms";
+            timer.Reset();
+            while(remObj.Count > 0)
+            {
+                obj = remObj.Dequeue();
+                timer.Start();
+                pointTree.Remove(obj);
+                timer.Stop();
+            }
+            pointTreeRemoveTimeDisplay.text = timer.ElapsedMilliseconds + "ms";
+            averageTimeDisplay.text = "Average time: Build(" + buildTotal / buildResults.Length + "ms) - Destroy(" + destroyTotal / destroyResults.Length + "ms)";
             StartCoroutine(PopulateTreeSlow());
         }
         IEnumerator PopulateTreeSlow()
@@ -130,21 +125,33 @@ namespace UnityOctree
             }
         }
 
-        void PopulateTree()
+        float PopulateTree(Stopwatch timer)
         {
             GameObject obj = new GameObject("Dummy");
             int i;
             int count = positions.Count;
+            timer.Reset();
             for (i = 0; i < count; i++)
             {
                 Vector3 pos = positions[i];
-                treeObj.Enqueue(tree.Add(obj, ref pos));
+                timer.Start();
+                OctreeObject<GameObject> added = tree.Add(obj, ref pos);
+                timer.Stop();
+                treeObj.Enqueue(added);
             }
+            return timer.ElapsedMilliseconds;
         }
-        void DestroyTree()
+        float DestroyTree(Stopwatch timer)
         {
+            timer.Reset();
             while (treeObj.Count > 0)
-                treeObj.Dequeue().Remove();
+            {
+                OctreeObject<GameObject> remove = treeObj.Dequeue();
+                timer.Start();
+                remove.Remove();
+                timer.Stop();
+            }
+            return timer.ElapsedMilliseconds;
         }
 
         private void OnDrawGizmos()
