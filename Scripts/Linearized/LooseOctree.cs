@@ -25,7 +25,6 @@ namespace UnityOctree
         private ObjectPool<OctreeObject<T>> objectPool;
         private Queue<OctreeObject<T>> orphanObjects;
         private Queue<OctreeObject<T>> removals; //Same reference, different name.
-        private Dictionary<uint, OctreeNode> nodes;
         private readonly Vector3 vCopy = new Vector3(); //Micro optimization. Empty V3 to avoid calling constructor
         private Vector3 pointSize = Vector3.zero; //Default size for point types
         private readonly float looseness;
@@ -37,19 +36,12 @@ namespace UnityOctree
             objectPool = new ObjectPool<OctreeObject<T>>(estimatedMaxObjectCount);
             orphanObjects = new Queue<OctreeObject<T>>(numObjectsAllowed*maxDepth);
             nodePool = new ObjectPool<OctreeNode>(Mathf.CeilToInt(estimatedMaxObjectCount/numObjectsAllowed));
-            nodes = new Dictionary<uint, OctreeNode>(Mathf.CeilToInt(estimatedMaxObjectCount/numObjectsAllowed));
 
             removals = orphanObjects;
             this.looseness = loosenessVal;
             rootNode = nodePool.Pop();
             rootNode.Initialize(-1,this);
             rootNode.SetBounds(ref initialWorldPosition, Vector3.one * initialSize, looseness);
-            //nodes[1U] = rootNode;
-        }
-
-        public int NodeCount()
-        {
-            return nodes.Count;
         }
 
         public OctreeObject<T> Add(T obj, ref Vector3 position)

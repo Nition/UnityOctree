@@ -11,6 +11,10 @@ namespace UnityOctree
             public Vector3 boundsExtents;
             public Vector3 boundsCenter;
             public Vector3 boundsSize;
+
+            public Vector3 doubleBoundsMax;
+            public Vector3 doubleBoundsMin;
+
             public Vector3 boundsMin;
             public Vector3 boundsMax;
             protected Vector3 baseSize;
@@ -24,6 +28,12 @@ namespace UnityOctree
                 boundsMin.x = boundsCenter.x - boundsExtents.x;
                 boundsMin.y = boundsCenter.y - boundsExtents.y;
                 boundsMin.z = boundsCenter.z - boundsExtents.z;
+                doubleBoundsMax.x = boundsCenter.x + (boundsExtents.x * 2F);
+                doubleBoundsMax.y = boundsCenter.y + (boundsExtents.y * 2F);
+                doubleBoundsMax.z = boundsCenter.z + (boundsExtents.z * 2F);
+                doubleBoundsMin.x = boundsCenter.x - (boundsExtents.x * 2F);
+                doubleBoundsMin.y = boundsCenter.y - (boundsExtents.y * 2F);
+                doubleBoundsMin.z = boundsCenter.z - (boundsExtents.z * 2F);
             }
 
             public void SetBounds(Bounds bounds)
@@ -37,6 +47,12 @@ namespace UnityOctree
                 boundsMin.x = boundsCenter.x - boundsExtents.x;
                 boundsMin.y = boundsCenter.y - boundsExtents.y;
                 boundsMin.z = boundsCenter.z - boundsExtents.z;
+                doubleBoundsMax.x = boundsCenter.x + (boundsExtents.x * 2F);
+                doubleBoundsMax.y = boundsCenter.y + (boundsExtents.y * 2F);
+                doubleBoundsMax.z = boundsCenter.z + (boundsExtents.z * 2F);
+                doubleBoundsMin.x = boundsCenter.x - (boundsExtents.x * 2F);
+                doubleBoundsMin.y = boundsCenter.y - (boundsExtents.y * 2F);
+                doubleBoundsMin.z = boundsCenter.z - (boundsExtents.z * 2F);
                 baseSize = boundsSize;
             }
             public void SetBounds(ref Vector3 center, Vector3 size, float looseness)
@@ -61,6 +77,12 @@ namespace UnityOctree
                 boundsMin.x = boundsCenter.x - boundsExtents.x;
                 boundsMin.y = boundsCenter.y - boundsExtents.y;
                 boundsMin.z = boundsCenter.z - boundsExtents.z;
+                doubleBoundsMax.x = boundsCenter.x + (boundsExtents.x * 2F);
+                doubleBoundsMax.y = boundsCenter.y + (boundsExtents.y * 2F);
+                doubleBoundsMax.z = boundsCenter.z + (boundsExtents.z * 2F);
+                doubleBoundsMin.x = boundsCenter.x - (boundsExtents.x * 2F);
+                doubleBoundsMin.y = boundsCenter.y - (boundsExtents.y * 2F);
+                doubleBoundsMin.z = boundsCenter.z - (boundsExtents.z * 2F);
                 baseSize = size;
             }
 

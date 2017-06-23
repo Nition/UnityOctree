@@ -118,7 +118,7 @@ namespace UnityOctree
                     children[index] = childNode;
                     childNode.ResetBounds();
                 }
-
+                tree.nodeCount += 8;
                 if (localItemCount > 0) //Place objects into the new nodes
                 {
                     OctreeObject<T> obj = firstObject;
@@ -251,7 +251,6 @@ namespace UnityOctree
                     return false;
 
                 OctreeNode childNode;
-                var nodes = tree.nodes;
                 bool firstLoop = true;
                 //    while (nodes.TryGetValue(childCode, out childNode))
                 {
@@ -286,16 +285,17 @@ namespace UnityOctree
                 while (true)
                 {
                     if (!childNode.ContainsBounds(ref newObj.boundsMin, ref newObj.boundsMax))
-                    { //Doesn't fit in this node. Put it in the parent node. If it's the firstLoop, we already checked this.
+                    { //Doesn't fit in this node. Put it in the parent node.
                         if (childNode.childIndex == -1)
                             return false;
+
                         childNode.parent.PutObjectInNode(newObj, updateCount);
                         return true;
                     }
 
                     index = childNode.BestFitChild(ref newObj.boundsCenter);
-                    if (childNode.isLeaf && childNode.localItemCount >= numObjectsAllowed)
-                        childNode.Split();//We hit the limit and we can split
+                    if (childNode.isLeaf && childNode.localItemCount >= numObjectsAllowed && childNode.ContainsBounds(ref newObj.doubleBoundsMin, ref newObj.doubleBoundsMax))
+                        childNode.Split();//We hit the limit and we can split. We only split if the object will fit in the new bounds
 
                     if (!childNode.isLeaf)
                     { //Drop down another level if we have children
@@ -329,7 +329,6 @@ namespace UnityOctree
 
                 OctreeNode parentNode = parent;
                 OctreeNode topLevel = null;
-                var nodes = tree.nodes;
                 while (true)
                 {
                     if (addedItem)
@@ -368,7 +367,6 @@ namespace UnityOctree
 
                 int index;
                 int count = 0;
-                var nodes = tree.nodes;
                 ObjectPool<OctreeNode> nodePool = tree.nodePool;
                 for (index = 0; index < 8; index++)
                 {
@@ -383,6 +381,7 @@ namespace UnityOctree
                     }
                     nodePool.Push(childNode);//Push node instance back to the pool
                 }
+                tree.nodeCount -= 8;
                 childHasObjects = 0; //Children are all gone
                 isLeaf = true; //We are now a leaf
                 return count;
@@ -452,11 +451,11 @@ namespace UnityOctree
 #if UNITY_EDITOR
             private bool FindObjectInTree(OctreeObject<T> obj)
             {
-                foreach (KeyValuePair<uint, OctreeNode> node in tree.nodes)
-                {
+                //foreach (KeyValuePair<uint, OctreeNode> node in tree.nodes)
+                //{
                     //        if (node.Value.objects.Contains(obj))
                     //            return true;
-                }
+                //}
                 return false;
             }
 #endif

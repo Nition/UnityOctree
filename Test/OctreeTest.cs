@@ -57,7 +57,7 @@ namespace UnityOctree
                 timer.Stop();
                 buildResults[i] = timer.ElapsedMilliseconds;
                 buildTotal += buildResults[i];
-                numNodesDisplay.text = "Nodes per iteration: " + tree.NodeCount();
+                numNodesDisplay.text = "Nodes per iteration: " + tree.nodeCount;
                 timer.Reset();
                 timer.Start();
                 DestroyTree();
