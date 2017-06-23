@@ -36,7 +36,7 @@ namespace UnityOctree
                         {
                             positions.Add(new Vector3(x, y, z));
                         }
-                    }
+                    }   
                 }
 
             }
@@ -103,7 +103,7 @@ namespace UnityOctree
                 count++;
                 thisRun++;
                 treeObj.Enqueue(tree.Add(obj, ref pos));
-                if (thisRun == 1)
+                if (thisRun == 100)
                 {
                     thisRun = 0;
                     yield return new WaitForSeconds(Time.deltaTime*2);
@@ -122,7 +122,7 @@ namespace UnityOctree
                 else
                     treeObj.Enqueue(obje);
 
-                if (thisRun == 1)
+                if (thisRun == 100)
                 {
                     thisRun = 0;
                     yield return new WaitForSeconds(Time.deltaTime * 2);
