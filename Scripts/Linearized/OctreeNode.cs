@@ -105,7 +105,6 @@ namespace UnityOctree
             private void Split()
             {
                 Debug.Assert(isLeaf, "Trying to split a non-leaf node.");
-                //Debug.Assert(GetDepth(locationCode) < maxDepth, "Max depth reached. This will cause integer overflow. Recommend increasing numObjectsAllowed or switching to 64bit integers.");
                 Debug.Assert(removals.Count == 0, "removals queue is not empty when it should be");
 
                 int objCount = 0;
@@ -138,11 +137,6 @@ namespace UnityOctree
 
                 branchItemCount += objCount;//Item was added below us, so our branch count needs to go up
                 isLeaf = false; //We are now a branch
-            }
-
-            int BestFitChild(OctreeObject<T> obj)
-            {
-                return BestFitChild(ref obj.boundsCenter);
             }
 
             int BestFitChild(ref Vector3 objCenter)
@@ -206,7 +200,7 @@ namespace UnityOctree
                 if ((localItemCount -= 1) == 0 && childIndex != -1)
                 { //Let our parent know we ran out of objects
                     parent.ChildHasObjects(childIndex, false);
-                    Debug.Assert(firstObject == null, "Moved all objects but firstObject is not null: " + firstObject);
+                    Debug.Assert(firstObject == null, "Moved all objects but firstObject is not null");
                 }
             }
 
@@ -240,6 +234,7 @@ namespace UnityOctree
                 int count = localItemCount;
                 localItemCount = 0;
                 node.localItemCount += count;
+                Debug.Assert(firstObject == null, "Moved all objects but firstObject is not null");
                 return count;
             }
 
@@ -341,20 +336,13 @@ namespace UnityOctree
                     else
                         parentNode = parentNode.parent;
                 }
-#if UNITY_EDITOR
-                if (parentNode == null)
-                {
-                    Debug.Assert(parentNode != null, "ParentNode is null. This shouldn't happen");
-                    throw new System.InvalidOperationException();
-                }
-#endif
+                Debug.Assert(parentNode != null, "ParentNode is null. This shouldn't happen");
                 Debug.Assert(orphanObjects.Count == 0, "orphanObjects queue is not empty when it should be");
                 if (topLevel != null)
                 {
                     int objCount = topLevel.MergeNode(topLevel);
                     topLevel.branchItemCount -= objCount; //Items are now in this node which doesn't count towards our branch count
-
-                    Debug.Assert(objCount <= numObjectsAllowed, "Attempting to merge too many objects " + objCount + " with a branch count of " + topLevel.branchItemCount);
+                    Debug.Assert(branchItemCount >= 0, "branchItemCount is zero. Something went wrong.");
                     Debug.Assert(localItemCount <= numObjectsAllowed, "Merged too many objects into one node!");
                 }
             }
@@ -376,7 +364,7 @@ namespace UnityOctree
                         count += childNode.MergeNode(topLevel);
                     if (childHasObjects != 0 && ChildHasObjects(index))
                     {
-                        Debug.Assert(childNode.localItemCount > 0, "Attempting to merge child with no objects. Showing " + childNode.localItemCount);
+                        Debug.Assert(childNode.localItemCount > 0, "Attempting to merge child with no objects.");
                         count += childNode.MoveObjects(topLevel);
                     }
                     nodePool.Push(childNode);//Push node instance back to the pool
