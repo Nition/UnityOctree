@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 // A node in a PointOctree
@@ -135,11 +136,69 @@ public class PointOctreeNode<T> where T : class {
 		}
 	}
 
-	/// <summary>
-	/// Set the 8 children of this octree.
-	/// </summary>
-	/// <param name="childOctrees">The 8 new child nodes.</param>
-	public void SetChildren(PointOctreeNode<T>[] childOctrees) {
+    /// <summary>
+    /// Return objects that are within <paramref name="maxDistance"/> of the specified position.
+    /// </summary>
+    /// <param name="position">The position.</param>
+    /// <param name="maxDistance">Maximum distance from the position to consider.</param>
+    /// <param name="result">List result.</param>
+    /// <returns>Objects within range.</returns>
+    public void GetNearby(ref Vector3 position, ref float maxDistance, List<T> result)
+    {
+        // Does the node contain this position at all?
+        // Note: Expanding the bounds is not exactly the same as a real distance check, but it's fast.
+        // TODO: Does someone have a fast AND accurate formula to do this check?
+        bounds.Expand(new Vector3(maxDistance * 2, maxDistance * 2, maxDistance * 2));
+        bool contained = bounds.Contains(position);
+        bounds.size = actualBoundsSize;
+        if (!contained)
+        {
+            return;
+        }
+
+        // Check against any objects in this node
+        for (int i = 0; i < objects.Count; i++)
+        {
+            if (Vector3.Distance(position, objects[i].Pos) <= maxDistance)
+            {
+                result.Add(objects[i].Obj);
+            }
+        }
+
+        // Check children
+        if (children != null)
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                children[i].GetNearby(ref position, ref maxDistance, result);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Return all objects in the tree.
+    /// </summary>
+    /// <returns>All objects.</returns>
+    public void GetAll(List<T> result)
+    {
+        // add directly contained objects
+        result.AddRange(objects.Select(o => o.Obj));
+
+        // add children objects
+        if (children != null)
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                children[i].GetAll(result);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Set the 8 children of this octree.
+    /// </summary>
+    /// <param name="childOctrees">The 8 new child nodes.</param>
+    public void SetChildren(PointOctreeNode<T>[] childOctrees) {
 		if (childOctrees.Length != 8) {
 			Debug.LogError("Child octree array must be length 8. Was length: " + childOctrees.Length);
 			return;

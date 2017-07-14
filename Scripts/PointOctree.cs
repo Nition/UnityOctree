@@ -127,11 +127,37 @@ public class PointOctree<T> where T : class {
 		return collidingWith.ToArray();
 	}
 
-	/// <summary>
-	/// Draws node boundaries visually for debugging.
-	/// Must be called from OnDrawGizmos externally. See also: DrawAllObjects.
-	/// </summary>
-	public void DrawAllBounds() {
+    /// <summary>
+    /// Return objects that are within <paramref name="maxDistance"/> of the specified position.
+    /// If none, returns an empty array (not null).
+    /// </summary>
+    /// <param name="position">The position. Passing as ref to improve performance since it won't have to be copied.</param>
+    /// <param name="maxDistance">Maximum distance from the ray to consider.</param>
+    /// <returns>Objects within range.</returns>
+    public T[] GetNearby(Vector3 position, float maxDistance)
+    {
+        List<T> collidingWith = new List<T>();
+        rootNode.GetNearby(ref position, ref maxDistance, collidingWith);
+        return collidingWith.ToArray();
+    }
+
+    /// <summary>
+    /// Return all objects in the tree.
+    /// If none, returns an empty array (not null).
+    /// </summary>
+    /// <returns>All objects.</returns>
+    public ICollection<T> GetAll()
+    {
+        List<T> objects = new List<T>(Count);
+        rootNode.GetAll(objects);
+        return objects;
+    }
+
+    /// <summary>
+    /// Draws node boundaries visually for debugging.
+    /// Must be called from OnDrawGizmos externally. See also: DrawAllObjects.
+    /// </summary>
+    public void DrawAllBounds() {
 		rootNode.DrawAllBounds();
 	}
 
