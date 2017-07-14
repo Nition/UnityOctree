@@ -79,6 +79,24 @@ public class PointOctree<T> where T : class {
 		return removed;
 	}
 
+    /// <summary>
+    /// Removes the specified object at the given position. Makes the assumption that the object only exists once in the tree.
+    /// </summary>
+    /// <param name="obj">Object to remove.</param>
+    /// <param name="objPos">Position of the object.</param>
+    /// <returns>True if the object was removed successfully.</returns>
+    public bool Remove(T obj, Vector3 objPos) {
+		bool removed = rootNode.Remove(obj, objPos);
+
+		// See if we can shrink the octree down now that we've removed the item
+		if (removed) {
+			Count--;
+			Shrink();
+		}
+
+		return removed;
+	}
+
 	/// <summary>
 	/// Returns objects that are within maxDistance of the specified ray.
 	/// If none returns false. Uses supplied list for results.

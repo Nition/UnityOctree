@@ -92,6 +92,19 @@ public class BoundsOctreeNode<T> {
 		return removed;
 	}
 
+    /// <summary>
+    /// Removes the specified object at the given position. Makes the assumption that the object only exists once in the tree.
+    /// </summary>
+    /// <param name="obj">Object to remove.</param>
+    /// <param name="objBounds">3D bounding box around the object.</param>
+    /// <returns>True if the object was removed successfully.</returns>
+    public bool Remove(T obj, Bounds objBounds) {
+        if (!Encapsulates(bounds, objBounds)) {
+			return false;
+		}
+        return SubRemove(obj, objBounds);
+    }
+
 	/// <summary>
 	/// Check if the specified bounds intersect with anything in the tree. See also: GetColliding.
 	/// </summary>
@@ -445,6 +458,37 @@ public class BoundsOctreeNode<T> {
 			}
 		}
 	}
+
+    /// <summary>
+    /// Private counterpart to the public <see cref="Remove(T, Bounds)"/> method.
+    /// </summary>
+    /// <param name="obj">Object to remove.</param>
+    /// <param name="objBounds">3D bounding box around the object.</param>
+    /// <returns>True if the object was removed successfully.</returns>
+    bool SubRemove(T obj, Bounds objBounds) {
+        bool removed = false;
+
+		for (int i = 0; i < objects.Count; i++) {
+			if (objects[i].Obj.Equals(obj)) {
+				removed = objects.Remove(objects[i]);
+				break;
+			}
+		}
+
+		if (!removed && children != null) {
+		    int bestFitChild = BestFitChild(objBounds);
+		    removed = children[bestFitChild].SubRemove(obj, objBounds);
+		}
+
+		if (removed && children != null) {
+			// Check if we should merge nodes now that we've removed an item
+			if (ShouldMerge()) {
+				Merge();
+			}
+		}
+
+		return removed;
+    }
 
 	/// <summary>
 	/// Splits the octree into eight children.

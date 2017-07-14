@@ -89,6 +89,19 @@ public class PointOctreeNode<T> where T : class {
 		return removed;
 	}
 
+    /// <summary>
+    /// Removes the specified object at the given position. Makes the assumption that the object only exists once in the tree.
+    /// </summary>
+    /// <param name="obj">Object to remove.</param>
+    /// <param name="objPos">Position of the object.</param>
+    /// <returns>True if the object was removed successfully.</returns>
+    public bool Remove(T obj, Vector3 objPos) {
+        if (!Encapsulates(bounds, objPos)) {
+			return false;
+		}
+        return SubRemove(obj, objPos);
+    }
+
 	/// <summary>
 	/// Return objects that are within maxDistance of the specified ray.
 	/// </summary>
@@ -326,6 +339,37 @@ public class PointOctreeNode<T> where T : class {
 			children[bestFitChild].SubAdd(obj, objPos);
 		}
 	}
+
+    /// <summary>
+    /// Private counterpart to the public <see cref="Remove(T, Vector3)"/> method.
+    /// </summary>
+    /// <param name="obj">Object to remove.</param>
+    /// <param name="objPos">Position of the object.</param>
+    /// <returns>True if the object was removed successfully.</returns>
+    bool SubRemove(T obj, Vector3 objPos) {
+        bool removed = false;
+
+		for (int i = 0; i < objects.Count; i++) {
+			if (objects[i].Obj.Equals(obj)) {
+				removed = objects.Remove(objects[i]);
+				break;
+			}
+		}
+
+		if (!removed && children != null) {
+		    int bestFitChild = BestFitChild(objPos);
+		    removed = children[bestFitChild].SubRemove(obj, objPos);
+		}
+
+		if (removed && children != null) {
+			// Check if we should merge nodes now that we've removed an item
+			if (ShouldMerge()) {
+				Merge();
+			}
+		}
+
+		return removed;
+    }
 
 	/// <summary>
 	/// Splits the octree into eight children.

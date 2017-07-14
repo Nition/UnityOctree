@@ -97,6 +97,24 @@ public class BoundsOctree<T> {
 		return removed;
 	}
 
+    /// <summary>
+    /// Removes the specified object at the given position. Makes the assumption that the object only exists once in the tree.
+    /// </summary>
+    /// <param name="obj">Object to remove.</param>
+    /// <param name="objBounds">3D bounding box around the object.</param>
+    /// <returns>True if the object was removed successfully.</returns>
+    public bool Remove(T obj, Bounds objBounds) {
+		bool removed = rootNode.Remove(obj, objBounds);
+
+		// See if we can shrink the octree down now that we've removed the item
+		if (removed) {
+			Count--;
+			Shrink();
+		}
+
+		return removed;
+	}
+
 	/// <summary>
 	/// Check if the specified bounds intersect with anything in the tree. See also: GetColliding.
 	/// </summary>
