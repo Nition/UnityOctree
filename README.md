@@ -17,7 +17,7 @@ There are two octree implementations here:
 **A few functions are implemented:**
 
 With BoundsOctree, you can pass in bounds and get a true/false answer for if it's colliding with anything (IsColliding), or get a list of everything it's collising with (GetColliding).
-With PointOctree, you can cast a ray and get a list of objects that are within x distance of that ray (GetNearby).
+With PointOctree, you can cast a ray and get a list of objects that are within x distance of that ray (GetNearby). You may also get a list of objects that are within x distance from a specified origin point.
 
 It shouldn't be too hard to implement additional functions if needed. For instance, PointOctree could check for points that fall inside a given bounds.
 
@@ -78,6 +78,11 @@ pointTree.GetNearby(myRay, 4);
 ```
 - Where myRay is a [Ray](http://docs.unity3d.com/Documentation/ScriptReference/Ray.html)
 - In this case we're looking for any point within 4m of the closest point on the ray
+
+```C#
+pointTree.GetNearby(myPos, 4);
+```
+- Where myPos is a [Vector3](http://docs.unity3d.com/Documentation/ScriptReference/Vector3.html)
 
 **Debugging Visuals**
 
