@@ -17,13 +17,11 @@ using UnityEngine;
 public class PointOctree<T> where T : class {
 	// The total amount of objects currently in the tree
 	public int Count { get; private set; }
-
+	
 	// Root node of the octree
 	PointOctreeNode<T> rootNode;
-
 	// Size that the octree was on creation
 	readonly float initialSize;
-
 	// Minimum side length that a node can be - essentially an alternative to having a max depth
 	readonly float minSize;
 
@@ -82,40 +80,6 @@ public class PointOctree<T> where T : class {
 	}
 
 	/// <summary>
-	/// Removes the specified object at the given position. Makes the assumption that the object only exists once in the tree.
-	/// </summary>
-	/// <param name="obj">Object to remove.</param>
-	/// <param name="objPos">Position of the object.</param>
-	/// <returns>True if the object was removed successfully.</returns>
-	public bool Remove(T obj, Vector3 objPos) {
-		bool removed = rootNode.Remove(obj, objPos);
-
-		// See if we can shrink the octree down now that we've removed the item
-		if (removed) {
-			Count--;
-			Shrink();
-		}
-
-		return removed;
-	}
-
-	/// <summary>
-	/// Returns objects that are within maxDistance of the specified ray.
-	/// If none returns false. Uses supplied list for results.
-	/// </summary>
-	/// <param name="ray">The ray. Passing as ref to improve performance since it won't have to be copied.</param>
-	/// <param name="maxDistance">Maximum distance from the ray to consider</param>
-	/// <param name="nearBy">Pre-initialized list to populate</param>
-	/// <returns>True if items are found, false if not</returns>
-	public bool GetNearbyNonAlloc(Ray ray, float maxDistance, List<T> nearBy) {
-		nearBy.Clear();
-		rootNode.GetNearby(ref ray, ref maxDistance, nearBy);
-		if (nearBy.Count > 0)
-			return true;
-		return false;
-	}
-
-	/// <summary>
 	/// Return objects that are within maxDistance of the specified ray.
 	/// If none, returns an empty array (not null).
 	/// </summary>
@@ -126,30 +90,6 @@ public class PointOctree<T> where T : class {
 		List<T> collidingWith = new List<T>();
 		rootNode.GetNearby(ref ray, ref maxDistance, collidingWith);
 		return collidingWith.ToArray();
-	}
-
-	/// <summary>
-	/// Return objects that are within <paramref name="maxDistance"/> of the specified position.
-	/// If none, returns an empty array (not null).
-	/// </summary>
-	/// <param name="position">The position. Passing as ref to improve performance since it won't have to be copied.</param>
-	/// <param name="maxDistance">Maximum distance from the ray to consider.</param>
-	/// <returns>Objects within range.</returns>
-	public T[] GetNearby(Vector3 position, float maxDistance) {
-		List<T> collidingWith = new List<T>();
-		rootNode.GetNearby(ref position, ref maxDistance, collidingWith);
-		return collidingWith.ToArray();
-	}
-
-	/// <summary>
-	/// Return all objects in the tree.
-	/// If none, returns an empty array (not null).
-	/// </summary>
-	/// <returns>All objects.</returns>
-	public ICollection<T> GetAll() {
-		List<T> objects = new List<T>(Count);
-		rootNode.GetAll(objects);
-		return objects;
 	}
 
 	/// <summary>

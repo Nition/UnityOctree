@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 // A node in a PointOctree
@@ -7,29 +6,22 @@ using UnityEngine;
 public class PointOctreeNode<T> where T : class {
 	// Centre of this node
 	public Vector3 Center { get; private set; }
-
 	// Length of the sides of this node
 	public float SideLength { get; private set; }
 
 	// Minimum size for a node in this octree
 	float minSize;
-
 	// Bounding box that represents this node
 	Bounds bounds = default(Bounds);
-
 	// Objects in this node
 	readonly List<OctreeObject> objects = new List<OctreeObject>();
-
 	// Child nodes, if any
 	PointOctreeNode<T>[] children = null;
-
 	// bounds of potential children to this node. These are actual size (with looseness taken into account), not base size
 	Bounds[] childBounds;
-
 	// If there are already numObjectsAllowed in a node, we split it into children
 	// A generally good number seems to be something around 8-15
 	const int NUM_OBJECTS_ALLOWED = 8;
-
 	// For reverting the bounds size after temporary changes
 	Vector3 actualBoundsSize;
 
@@ -98,19 +90,6 @@ public class PointOctreeNode<T> where T : class {
 	}
 
 	/// <summary>
-	/// Removes the specified object at the given position. Makes the assumption that the object only exists once in the tree.
-	/// </summary>
-	/// <param name="obj">Object to remove.</param>
-	/// <param name="objPos">Position of the object.</param>
-	/// <returns>True if the object was removed successfully.</returns>
-	public bool Remove(T obj, Vector3 objPos) {
-		if (!Encapsulates(bounds, objPos)) {
-			return false;
-		}
-		return SubRemove(obj, objPos);
-	}
-
-	/// <summary>
 	/// Return objects that are within maxDistance of the specified ray.
 	/// </summary>
 	/// <param name="ray">The ray.</param>
@@ -130,7 +109,7 @@ public class PointOctreeNode<T> where T : class {
 
 		// Check against any objects in this node
 		for (int i = 0; i < objects.Count; i++) {
-			if (SqrDistanceToRay(ray, objects[i].Pos) <= (maxDistance * maxDistance)) {
+			if (DistanceToRay(ray, objects[i].Pos) <= maxDistance) {
 				result.Add(objects[i].Obj);
 			}
 		}
@@ -139,55 +118,6 @@ public class PointOctreeNode<T> where T : class {
 		if (children != null) {
 			for (int i = 0; i < 8; i++) {
 				children[i].GetNearby(ref ray, ref maxDistance, result);
-			}
-		}
-	}
-
-	/// <summary>
-	/// Return objects that are within <paramref name="maxDistance"/> of the specified position.
-	/// </summary>
-	/// <param name="position">The position.</param>
-	/// <param name="maxDistance">Maximum distance from the position to consider.</param>
-	/// <param name="result">List result.</param>
-	/// <returns>Objects within range.</returns>
-	public void GetNearby(ref Vector3 position, ref float maxDistance, List<T> result) {
-		// Does the node contain this position at all?
-		// Note: Expanding the bounds is not exactly the same as a real distance check, but it's fast.
-		// TODO: Does someone have a fast AND accurate formula to do this check?
-		bounds.Expand(new Vector3(maxDistance * 2, maxDistance * 2, maxDistance * 2));
-		bool contained = bounds.Contains(position);
-		bounds.size = actualBoundsSize;
-		if (!contained) {
-			return;
-		}
-
-		// Check against any objects in this node
-		for (int i = 0; i < objects.Count; i++) {
-			if (Vector3.Distance(position, objects[i].Pos) <= maxDistance) {
-				result.Add(objects[i].Obj);
-			}
-		}
-
-		// Check children
-		if (children != null) {
-			for (int i = 0; i < 8; i++) {
-				children[i].GetNearby(ref position, ref maxDistance, result);
-			}
-		}
-	}
-
-	/// <summary>
-	/// Return all objects in the tree.
-	/// </summary>
-	/// <returns>All objects.</returns>
-	public void GetAll(List<T> result) {
-		// add directly contained objects
-		result.AddRange(objects.Select(o => o.Obj));
-
-		// add children objects
-		if (children != null) {
-			for (int i = 0; i < 8; i++) {
-				children[i].GetAll(result);
 			}
 		}
 	}
@@ -398,37 +328,6 @@ public class PointOctreeNode<T> where T : class {
 	}
 
 	/// <summary>
-	/// Private counterpart to the public <see cref="Remove(T, Vector3)"/> method.
-	/// </summary>
-	/// <param name="obj">Object to remove.</param>
-	/// <param name="objPos">Position of the object.</param>
-	/// <returns>True if the object was removed successfully.</returns>
-	bool SubRemove(T obj, Vector3 objPos) {
-		bool removed = false;
-
-		for (int i = 0; i < objects.Count; i++) {
-			if (objects[i].Obj.Equals(obj)) {
-				removed = objects.Remove(objects[i]);
-				break;
-			}
-		}
-
-		if (!removed && children != null) {
-			int bestFitChild = BestFitChild(objPos);
-			removed = children[bestFitChild].SubRemove(obj, objPos);
-		}
-
-		if (removed && children != null) {
-			// Check if we should merge nodes now that we've removed an item
-			if (ShouldMerge()) {
-				Merge();
-			}
-		}
-
-		return removed;
-	}
-
-	/// <summary>
 	/// Splits the octree into eight children.
 	/// </summary>
 	void Split() {
@@ -520,8 +419,8 @@ public class PointOctreeNode<T> where T : class {
 	/// </summary>
 	/// <param name="ray">The ray.</param>
 	/// <param name="point">The point to check distance from the ray.</param>
-	/// <returns>Squared distance from the point to the closest point of the ray.</returns>
-	public static float SqrDistanceToRay(Ray ray, Vector3 point) {
-		return Vector3.Cross(ray.direction, point - ray.origin).sqrMagnitude;
+	/// <returns>Distance from the point to the closest point of the ray.</returns>
+	public static float DistanceToRay(Ray ray, Vector3 point) {
+		return Vector3.Cross(ray.direction, point - ray.origin).magnitude;
 	}
 }

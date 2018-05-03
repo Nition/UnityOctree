@@ -24,17 +24,14 @@ using UnityEngine;
 public class BoundsOctree<T> {
 	// The total amount of objects currently in the tree
 	public int Count { get; private set; }
-
+	
 	// Root node of the octree
 	BoundsOctreeNode<T> rootNode;
-
 	// Should be a value between 1 and 2. A multiplier for the base size of a node.
 	// 1.0 is a "normal" octree, while values > 1 have overlap
 	readonly float looseness;
-
 	// Size that the octree was on creation
 	readonly float initialSize;
-
 	// Minimum side length that a node can be - essentially an alternative to having a max depth
 	readonly float minSize;
 	// For collision visualisation. Automatically removed in builds.
@@ -101,24 +98,6 @@ public class BoundsOctree<T> {
 	}
 
 	/// <summary>
-	/// Removes the specified object at the given position. Makes the assumption that the object only exists once in the tree.
-	/// </summary>
-	/// <param name="obj">Object to remove.</param>
-	/// <param name="objBounds">3D bounding box around the object.</param>
-	/// <returns>True if the object was removed successfully.</returns>
-	public bool Remove(T obj, Bounds objBounds) {
-		bool removed = rootNode.Remove(obj, objBounds);
-
-		// See if we can shrink the octree down now that we've removed the item
-		if (removed) {
-			Count--;
-			Shrink();
-		}
-
-		return removed;
-	}
-
-	/// <summary>
 	/// Check if the specified bounds intersect with anything in the tree. See also: GetColliding.
 	/// </summary>
 	/// <param name="checkBounds">bounds to check.</param>
@@ -174,7 +153,8 @@ public class BoundsOctree<T> {
 		rootNode.GetColliding(ref checkRay, collidingWith, maxDistance);
 	}
 
-	public Bounds GetMaxBounds() {
+	public Bounds GetMaxBounds()
+	{
 		return rootNode.GetBounds();
 	}
 
@@ -264,15 +244,19 @@ public class BoundsOctree<T> {
 		// Create a new, bigger octree root node
 		rootNode = new BoundsOctreeNode<T>(newLength, minSize, looseness, newCenter);
 
-		if (oldRoot.HasAnyObjects()) {
+		if (oldRoot.HasAnyObjects())
+		{
 			// Create 7 new octree children to go with the old root as children of the new root
 			int rootPos = GetRootPosIndex(xDirection, yDirection, zDirection);
 			BoundsOctreeNode<T>[] children = new BoundsOctreeNode<T>[8];
-			for (int i = 0; i < 8; i++) {
-				if (i == rootPos) {
+			for (int i = 0; i < 8; i++)
+			{
+				if (i == rootPos)
+				{
 					children[i] = oldRoot;
 				}
-				else {
+				else
+				{
 					xDirection = i % 2 == 0 ? -1 : 1;
 					yDirection = i > 3 ? -1 : 1;
 					zDirection = (i < 2 || (i > 3 && i < 6)) ? -1 : 1;

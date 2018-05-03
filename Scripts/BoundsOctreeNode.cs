@@ -6,31 +6,23 @@ using UnityEngine;
 public class BoundsOctreeNode<T> {
 	// Centre of this node
 	public Vector3 Center { get; private set; }
-
 	// Length of this node if it has a looseness of 1.0
 	public float BaseLength { get; private set; }
 
 	// Looseness value for this node
 	float looseness;
-
 	// Minimum size for a node in this octree
 	float minSize;
-
 	// Actual length of sides, taking the looseness value into account
 	float adjLength;
-
 	// Bounding box that represents this node
 	Bounds bounds = default(Bounds);
-
 	// Objects in this node
 	readonly List<OctreeObject> objects = new List<OctreeObject>();
-
 	// Child nodes, if any
 	BoundsOctreeNode<T>[] children = null;
-
 	// Bounds of potential children to this node. These are actual size (with looseness taken into account), not base size
 	Bounds[] childBounds;
-
 	// If there are already numObjectsAllowed in a node, we split it into children
 	// A generally good number seems to be something around 8-15
 	const int numObjectsAllowed = 8;
@@ -98,19 +90,6 @@ public class BoundsOctreeNode<T> {
 		}
 
 		return removed;
-	}
-
-	/// <summary>
-	/// Removes the specified object at the given position. Makes the assumption that the object only exists once in the tree.
-	/// </summary>
-	/// <param name="obj">Object to remove.</param>
-	/// <param name="objBounds">3D bounding box around the object.</param>
-	/// <returns>True if the object was removed successfully.</returns>
-	public bool Remove(T obj, Bounds objBounds) {
-		if (!Encapsulates(bounds, objBounds)) {
-			return false;
-		}
-		return SubRemove(obj, objBounds);
 	}
 
 	/// <summary>
@@ -244,7 +223,8 @@ public class BoundsOctreeNode<T> {
 		children = childOctrees;
 	}
 
-	public Bounds GetBounds() {
+	public Bounds GetBounds()
+	{
 		return bounds;
 	}
 
@@ -464,37 +444,6 @@ public class BoundsOctreeNode<T> {
 				objects.Add(newObj);
 			}
 		}
-	}
-
-	/// <summary>
-	/// Private counterpart to the public <see cref="Remove(T, Bounds)"/> method.
-	/// </summary>
-	/// <param name="obj">Object to remove.</param>
-	/// <param name="objBounds">3D bounding box around the object.</param>
-	/// <returns>True if the object was removed successfully.</returns>
-	bool SubRemove(T obj, Bounds objBounds) {
-		bool removed = false;
-
-		for (int i = 0; i < objects.Count; i++) {
-			if (objects[i].Obj.Equals(obj)) {
-				removed = objects.Remove(objects[i]);
-				break;
-			}
-		}
-
-		if (!removed && children != null) {
-			int bestFitChild = BestFitChild(objBounds);
-			removed = children[bestFitChild].SubRemove(obj, objBounds);
-		}
-
-		if (removed && children != null) {
-			// Check if we should merge nodes now that we've removed an item
-			if (ShouldMerge()) {
-				Merge();
-			}
-		}
-
-		return removed;
 	}
 
 	/// <summary>
