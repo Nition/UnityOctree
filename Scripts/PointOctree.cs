@@ -109,7 +109,7 @@ public class PointOctree<T> where T : class {
 	/// <returns>True if items are found, false if not</returns>
 	public bool GetNearbyNonAlloc(Ray ray, float maxDistance, List<T> nearBy) {
 		nearBy.Clear();
-		rootNode.GetNearby(ref ray, ref maxDistance, nearBy);
+		rootNode.GetNearby(ref ray, maxDistance, nearBy);
 		if (nearBy.Count > 0)
 			return true;
 		return false;
@@ -124,7 +124,7 @@ public class PointOctree<T> where T : class {
 	/// <returns>Objects within range.</returns>
 	public T[] GetNearby(Ray ray, float maxDistance) {
 		List<T> collidingWith = new List<T>();
-		rootNode.GetNearby(ref ray, ref maxDistance, collidingWith);
+		rootNode.GetNearby(ref ray, maxDistance, collidingWith);
 		return collidingWith.ToArray();
 	}
 
@@ -137,7 +137,7 @@ public class PointOctree<T> where T : class {
 	/// <returns>Objects within range.</returns>
 	public T[] GetNearby(Vector3 position, float maxDistance) {
 		List<T> collidingWith = new List<T>();
-		rootNode.GetNearby(ref position, ref maxDistance, collidingWith);
+		rootNode.GetNearby(ref position, maxDistance, collidingWith);
 		return collidingWith.ToArray();
 	}
 
