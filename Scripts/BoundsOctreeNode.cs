@@ -28,7 +28,7 @@ public class BoundsOctreeNode<T> {
 	const int numObjectsAllowed = 8;
 
 	// An object in the octree
-	class OctreeObject {
+	struct OctreeObject {
 		public T Obj;
 		public Bounds Bounds;
 	}
@@ -69,8 +69,10 @@ public class BoundsOctreeNode<T> {
 		bool removed = false;
 
 		for (int i = 0; i < objects.Count; i++) {
-			if (objects[i].Obj.Equals(obj)) {
-				removed = objects.Remove(objects[i]);
+			if (objects[i].Obj.Equals(obj))
+			{
+				removed = true;
+				objects.RemoveAt(i);
 				break;
 			}
 		}
