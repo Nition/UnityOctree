@@ -14,7 +14,7 @@ using UnityEngine;
 // Originally written for my game Scraps (http://www.scrapsgame.com) but intended to be general-purpose.
 // Copyright 2014 Nition, BSD licence (see LICENCE file). http://nition.co
 // Unity-based, but could be adapted to work in pure C#
-public class PointOctree<T> where T : class {
+public class PointOctree<T> {
 	// The total amount of objects currently in the tree
 	public int Count { get; private set; }
 
