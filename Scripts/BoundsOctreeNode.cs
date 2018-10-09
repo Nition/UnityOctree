@@ -233,6 +233,27 @@ public class BoundsOctreeNode<T> {
 		}
 	}
 
+	public void GetWithinFrustum(Plane[] planes, List<T> result) {
+		// Is the input node inside the frustum?
+		if (!GeometryUtility.TestPlanesAABB(planes, bounds)) {
+			return;
+		}
+
+		// Check against any objects in this node
+		for (int i = 0; i < objects.Count; i++) {
+			if (GeometryUtility.TestPlanesAABB(planes, objects[i].Bounds)) {
+				result.Add(objects[i].Obj);
+			}
+		}
+
+		// Check children
+		if (children != null) {
+			for (int i = 0; i < 8; i++) {
+				children[i].GetWithinFrustum(planes, result);
+			}
+		}
+	}
+
 	/// <summary>
 	/// Set the 8 children of this octree.
 	/// </summary>

@@ -174,6 +174,14 @@ public class BoundsOctree<T> {
 		rootNode.GetColliding(ref checkRay, collidingWith, maxDistance);
 	}
 
+	public List<T> GetWithinFrustum(Camera cam) {
+		var planes = GeometryUtility.CalculateFrustumPlanes(cam);
+
+		var list = new List<T>();
+		rootNode.GetWithinFrustum(planes, list);
+		return list;
+	}
+
 	public Bounds GetMaxBounds() {
 		return rootNode.GetBounds();
 	}

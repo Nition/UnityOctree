@@ -119,7 +119,7 @@ public class PointOctreeNode<T> {
 	/// <param name="maxDistance">Maximum distance from the ray to consider.</param>
 	/// <param name="result">List result.</param>
 	/// <returns>Objects within range.</returns>
-	public void GetNearby(ref Ray ray, ref float maxDistance, List<T> result) {
+	public void GetNearby(ref Ray ray, float maxDistance, List<T> result) {
 		// Does the ray hit this node at all?
 		// Note: Expanding the bounds is not exactly the same as a real distance check, but it's fast.
 		// TODO: Does someone have a fast AND accurate formula to do this check?
@@ -140,7 +140,7 @@ public class PointOctreeNode<T> {
 		// Check children
 		if (children != null) {
 			for (int i = 0; i < 8; i++) {
-				children[i].GetNearby(ref ray, ref maxDistance, result);
+				children[i].GetNearby(ref ray, maxDistance, result);
 			}
 		}
 	}
@@ -152,20 +152,16 @@ public class PointOctreeNode<T> {
 	/// <param name="maxDistance">Maximum distance from the position to consider.</param>
 	/// <param name="result">List result.</param>
 	/// <returns>Objects within range.</returns>
-	public void GetNearby(ref Vector3 position, ref float maxDistance, List<T> result) {
-		// Does the node contain this position at all?
-		// Note: Expanding the bounds is not exactly the same as a real distance check, but it's fast.
-		// TODO: Does someone have a fast AND accurate formula to do this check?
-		bounds.Expand(new Vector3(maxDistance * 2, maxDistance * 2, maxDistance * 2));
-		bool contained = bounds.Contains(position);
-		bounds.size = actualBoundsSize;
-		if (!contained) {
-			return;
-		}
+	public void GetNearby(ref Vector3 position, float maxDistance, List<T> result) {
+        // Does the node intersects with the sphere of center = position and radius = maxDistance?
+        float sqrMaxDistance = maxDistance * maxDistance;
+        if ((bounds.ClosestPoint(position) - position).sqrMagnitude > sqrMaxDistance) {
+            return;
+        }
 
 		// Check against any objects in this node
 		for (int i = 0; i < objects.Count; i++) {
-			if (Vector3.Distance(position, objects[i].Pos) <= maxDistance) {
+			if ((position - objects[i].Pos).sqrMagnitude <= sqrMaxDistance) {
 				result.Add(objects[i].Obj);
 			}
 		}
@@ -173,7 +169,7 @@ public class PointOctreeNode<T> {
 		// Check children
 		if (children != null) {
 			for (int i = 0; i < 8; i++) {
-				children[i].GetNearby(ref position, ref maxDistance, result);
+				children[i].GetNearby(ref position, maxDistance, result);
 			}
 		}
 	}
