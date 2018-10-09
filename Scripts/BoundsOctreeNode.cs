@@ -28,12 +28,14 @@ public class BoundsOctreeNode<T> {
 	// Child nodes, if any
 	BoundsOctreeNode<T>[] children = null;
 
+	bool HasChildren { get { return children != null; } }
+
 	// Bounds of potential children to this node. These are actual size (with looseness taken into account), not base size
 	Bounds[] childBounds;
 
-	// If there are already numObjectsAllowed in a node, we split it into children
+	// If there are already NUM_OBJECTS_ALLOWED in a node, we split it into children
 	// A generally good number seems to be something around 8-15
-	const int numObjectsAllowed = 8;
+	const int NUM_OBJECTS_ALLOWED = 8;
 
 	// An object in the octree
 	class OctreeObject {
@@ -421,21 +423,24 @@ public class BoundsOctreeNode<T> {
 	/// <param name="objBounds">3D bounding box around the object.</param>
 	void SubAdd(T obj, Bounds objBounds) {
 		// We know it fits at this level if we've got this far
-		// Just add if few objects are here, or children would be below min size
-		if (objects.Count < numObjectsAllowed || (BaseLength / 2) < minSize) {
-			OctreeObject newObj = new OctreeObject { Obj = obj, Bounds = objBounds };
-			//Debug.Log("ADD " + obj.name + " to depth " + depth);
-			objects.Add(newObj);
-		}
-		else {
-			// Fits at this level, but we can go deeper. Would it fit there?
 
+		// We always put things in the deepest possible child
+		// So we can skip some checks if there are children aleady
+		if (!HasChildren) {
+			// Just add if few objects are here, or children would be below min size
+			if (objects.Count < NUM_OBJECTS_ALLOWED || (BaseLength / 2) < minSize) {
+				OctreeObject newObj = new OctreeObject { Obj = obj, Bounds = objBounds };
+				objects.Add(newObj);
+				return; // We're done. No children yet
+			}
+
+			// Fits at this level, but we can go deeper. Would it fit there?
 			// Create the 8 children
 			int bestFitChild;
 			if (children == null) {
 				Split();
 				if (children == null) {
-					Debug.Log("Child creation failed for an unknown reason. Early exit.");
+					Debug.LogError("Child creation failed for an unknown reason. Early exit.");
 					return;
 				}
 
@@ -443,7 +448,7 @@ public class BoundsOctreeNode<T> {
 				for (int i = objects.Count - 1; i >= 0; i--) {
 					OctreeObject existingObj = objects[i];
 					// Find which child the object is closest to based on where the
-					// object's center is located in relation to the octree's center.
+					// object's center is located in relation to the octree's center
 					bestFitChild = BestFitChild(existingObj.Bounds);
 					// Does it fit?
 					if (Encapsulates(children[bestFitChild].bounds, existingObj.Bounds)) {
@@ -452,17 +457,17 @@ public class BoundsOctreeNode<T> {
 					}
 				}
 			}
+		}
 
-			// Now handle the new object we're adding now
-			bestFitChild = BestFitChild(objBounds);
-			if (Encapsulates(children[bestFitChild].bounds, objBounds)) {
-				children[bestFitChild].SubAdd(obj, objBounds);
-			}
-			else {
-				OctreeObject newObj = new OctreeObject { Obj = obj, Bounds = objBounds };
-				//Debug.Log("ADD " + obj.name + " to depth " + depth);
-				objects.Add(newObj);
-			}
+		// Handle the new object we're adding now
+		int bestFit = BestFitChild(objBounds);
+		if (Encapsulates(children[bestFit].bounds, objBounds)) {
+			children[bestFit].SubAdd(obj, objBounds);
+		}
+		else {
+			// Didn't fit in a child. We'll have to it to this node instead
+			OctreeObject newObj = new OctreeObject { Obj = obj, Bounds = objBounds };
+			objects.Add(newObj);
 		}
 	}
 
@@ -568,7 +573,7 @@ public class BoundsOctreeNode<T> {
 				totalObjects += child.objects.Count;
 			}
 		}
-		return totalObjects <= numObjectsAllowed;
+		return totalObjects <= NUM_OBJECTS_ALLOWED;
 	}
 
 	/// <summary>

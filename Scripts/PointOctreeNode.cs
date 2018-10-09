@@ -4,7 +4,7 @@ using UnityEngine;
 
 // A node in a PointOctree
 // Copyright 2014 Nition, BSD licence (see LICENCE file). http://nition.co
-public class PointOctreeNode<T> where T : class {
+public class PointOctreeNode<T> {
 	// Centre of this node
 	public Vector3 Center { get; private set; }
 
@@ -23,10 +23,12 @@ public class PointOctreeNode<T> where T : class {
 	// Child nodes, if any
 	PointOctreeNode<T>[] children = null;
 
+	bool HasChildren { get { return children != null; } }
+
 	// bounds of potential children to this node. These are actual size (with looseness taken into account), not base size
 	Bounds[] childBounds;
 
-	// If there are already numObjectsAllowed in a node, we split it into children
+	// If there are already NUM_OBJECTS_ALLOWED in a node, we split it into children
 	// A generally good number seems to be something around 8-15
 	const int NUM_OBJECTS_ALLOWED = 8;
 
@@ -364,37 +366,41 @@ public class PointOctreeNode<T> where T : class {
 	/// <param name="objPos">Position of the object.</param>
 	void SubAdd(T obj, Vector3 objPos) {
 		// We know it fits at this level if we've got this far
-		// Just add if few objects are here, or children would be below min size
-		if (objects.Count < NUM_OBJECTS_ALLOWED || (SideLength / 2) < minSize) {
-			OctreeObject newObj = new OctreeObject { Obj = obj, Pos = objPos };
-			//Debug.Log("ADD " + obj.name + " to depth " + depth);
-			objects.Add(newObj);
-		}
-		else { // Enough objects in this node already: Create new children
-			// Create the 8 children
+
+		// We always put things in the deepest possible child
+		// So we can skip checks and simply move down if there are children aleady
+		if (!HasChildren) {
+			// Just add if few objects are here, or children would be below min size
+			if (objects.Count < NUM_OBJECTS_ALLOWED || (SideLength / 2) < minSize) {
+				OctreeObject newObj = new OctreeObject { Obj = obj, Pos = objPos };
+				objects.Add(newObj);
+				return; // We're done. No children yet
+			}
+			
+			// Enough objects in this node already: Create the 8 children
 			int bestFitChild;
 			if (children == null) {
 				Split();
 				if (children == null) {
-					Debug.Log("Child creation failed for an unknown reason. Early exit.");
+					Debug.LogError("Child creation failed for an unknown reason. Early exit.");
 					return;
 				}
 
-				// Now that we have the new children, see if this node's existing objects would fit there
+				// Now that we have the new children, move this node's existing objects into them
 				for (int i = objects.Count - 1; i >= 0; i--) {
 					OctreeObject existingObj = objects[i];
 					// Find which child the object is closest to based on where the
-					// object's center is located in relation to the octree's center.
+					// object's center is located in relation to the octree's center
 					bestFitChild = BestFitChild(existingObj.Pos);
 					children[bestFitChild].SubAdd(existingObj.Obj, existingObj.Pos); // Go a level deeper					
 					objects.Remove(existingObj); // Remove from here
 				}
 			}
-
-			// Now handle the new object we're adding now
-			bestFitChild = BestFitChild(objPos);
-			children[bestFitChild].SubAdd(obj, objPos);
 		}
+
+		// Handle the new object we're adding now
+		int bestFit = BestFitChild(objPos);
+		children[bestFit].SubAdd(obj, objPos);
 	}
 
 	/// <summary>
