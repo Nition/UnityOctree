@@ -274,7 +274,7 @@ public class BoundsOctree<T> {
 
 		if (oldRoot.HasAnyObjects()) {
 			// Create 7 new octree children to go with the old root as children of the new root
-			int rootPos = GetRootPosIndex(xDirection, yDirection, zDirection);
+			int rootPos = rootNode.BestFitChild(oldRoot.Center);
 			BoundsOctreeNode<T>[] children = new BoundsOctreeNode<T>[8];
 			for (int i = 0; i < 8; i++) {
 				if (i == rootPos) {
@@ -284,7 +284,7 @@ public class BoundsOctree<T> {
 					xDirection = i % 2 == 0 ? -1 : 1;
 					yDirection = i > 3 ? -1 : 1;
 					zDirection = (i < 2 || (i > 3 && i < 6)) ? -1 : 1;
-					children[i] = new BoundsOctreeNode<T>(rootNode.BaseLength, minSize, looseness, newCenter + new Vector3(xDirection * half, yDirection * half, zDirection * half));
+					children[i] = new BoundsOctreeNode<T>(oldRoot.BaseLength, minSize, looseness, newCenter + new Vector3(xDirection * half, yDirection * half, zDirection * half));
 				}
 			}
 
@@ -298,19 +298,5 @@ public class BoundsOctree<T> {
 	/// </summary>
 	void Shrink() {
 		rootNode = rootNode.ShrinkIfPossible(initialSize);
-	}
-
-	/// <summary>
-	/// Used when growing the octree. Works out where the old root node would fit inside a new, larger root node.
-	/// </summary>
-	/// <param name="xDir">X direction of growth. 1 or -1.</param>
-	/// <param name="yDir">Y direction of growth. 1 or -1.</param>
-	/// <param name="zDir">Z direction of growth. 1 or -1.</param>
-	/// <returns>Octant where the root node should be.</returns>
-	static int GetRootPosIndex(int xDir, int yDir, int zDir) {
-		int result = xDir > 0 ? 1 : 0;
-		if (yDir < 0) result += 4;
-		if (zDir > 0) result += 2;
-		return result;
 	}
 }

@@ -100,8 +100,8 @@ public class PointOctree<T> {
 	}
 
 	/// <summary>
-	/// Returns objects that are within maxDistance of the specified ray.
-	/// If none returns false. Uses supplied list for results.
+	/// Returns objects that are within <paramref name="maxDistance"/> of the specified ray.
+	/// If none, returns false. Uses supplied list for results.
 	/// </summary>
 	/// <param name="ray">The ray. Passing as ref to improve performance since it won't have to be copied.</param>
 	/// <param name="maxDistance">Maximum distance from the ray to consider</param>
@@ -116,7 +116,7 @@ public class PointOctree<T> {
 	}
 
 	/// <summary>
-	/// Return objects that are within maxDistance of the specified ray.
+	/// Returns objects that are within <paramref name="maxDistance"/> of the specified ray.
 	/// If none, returns an empty array (not null).
 	/// </summary>
 	/// <param name="ray">The ray. Passing as ref to improve performance since it won't have to be copied.</param>
@@ -129,16 +129,31 @@ public class PointOctree<T> {
 	}
 
 	/// <summary>
-	/// Return objects that are within <paramref name="maxDistance"/> of the specified position.
+	/// Returns objects that are within <paramref name="maxDistance"/> of the specified position.
 	/// If none, returns an empty array (not null).
 	/// </summary>
 	/// <param name="position">The position. Passing as ref to improve performance since it won't have to be copied.</param>
-	/// <param name="maxDistance">Maximum distance from the ray to consider.</param>
+	/// <param name="maxDistance">Maximum distance from the position to consider.</param>
 	/// <returns>Objects within range.</returns>
 	public T[] GetNearby(Vector3 position, float maxDistance) {
 		List<T> collidingWith = new List<T>();
 		rootNode.GetNearby(ref position, maxDistance, collidingWith);
 		return collidingWith.ToArray();
+	}
+
+	/// <summary>
+	/// Returns objects that are within <paramref name="maxDistance"/> of the specified position.
+	/// If none, returns false. Uses supplied list for results.
+	/// </summary>
+	/// <param name="maxDistance">Maximum distance from the position to consider</param>
+	/// <param name="nearBy">Pre-initialized list to populate</param>
+	/// <returns>True if items are found, false if not</returns>
+	public bool GetNearbyNonAlloc(Vector3 position, float maxDistance, List<T> nearBy) {
+		nearBy.Clear();
+		rootNode.GetNearby(ref position, maxDistance, nearBy);
+		if (nearBy.Count > 0)
+			return true;
+		return false;
 	}
 
 	/// <summary>
@@ -187,7 +202,7 @@ public class PointOctree<T> {
 		rootNode = new PointOctreeNode<T>(newLength, minSize, newCenter);
 
 		// Create 7 new octree children to go with the old root as children of the new root
-		int rootPos = GetRootPosIndex(xDirection, yDirection, zDirection);
+		int rootPos = rootNode.BestFitChild(oldRoot.Center);
 		PointOctreeNode<T>[] children = new PointOctreeNode<T>[8];
 		for (int i = 0; i < 8; i++) {
 			if (i == rootPos) {
@@ -197,7 +212,7 @@ public class PointOctree<T> {
 				xDirection = i % 2 == 0 ? -1 : 1;
 				yDirection = i > 3 ? -1 : 1;
 				zDirection = (i < 2 || (i > 3 && i < 6)) ? -1 : 1;
-				children[i] = new PointOctreeNode<T>(rootNode.SideLength, minSize, newCenter + new Vector3(xDirection * half, yDirection * half, zDirection * half));
+				children[i] = new PointOctreeNode<T>(oldRoot.SideLength, minSize, newCenter + new Vector3(xDirection * half, yDirection * half, zDirection * half));
 			}
 		}
 
@@ -210,19 +225,5 @@ public class PointOctree<T> {
 	/// </summary>
 	void Shrink() {
 		rootNode = rootNode.ShrinkIfPossible(initialSize);
-	}
-
-	/// <summary>
-	/// Used when growing the octree. Works out where the old root node would fit inside a new, larger root node.
-	/// </summary>
-	/// <param name="xDir">X direction of growth. 1 or -1.</param>
-	/// <param name="yDir">Y direction of growth. 1 or -1.</param>
-	/// <param name="zDir">Z direction of growth. 1 or -1.</param>
-	/// <returns>Octant where the root node should be.</returns>
-	static int GetRootPosIndex(int xDir, int yDir, int zDir) {
-		int result = xDir > 0 ? 1 : 0;
-		if (yDir < 0) result += 4;
-		if (zDir > 0) result += 2;
-		return result;
 	}
 }

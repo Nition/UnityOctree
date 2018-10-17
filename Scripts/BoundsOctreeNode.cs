@@ -334,7 +334,7 @@ public class BoundsOctreeNode<T> {
 		int bestFit = -1;
 		for (int i = 0; i < objects.Count; i++) {
 			OctreeObject curObj = objects[i];
-			int newBestFit = BestFitChild(curObj.Bounds);
+			int newBestFit = BestFitChild(curObj.Bounds.center);
 			if (i == 0 || newBestFit == bestFit) {
 				// In same octant as the other(s). Does it fit completely inside that octant?
 				if (Encapsulates(childBounds[newBestFit], curObj.Bounds)) {
@@ -384,6 +384,15 @@ public class BoundsOctreeNode<T> {
 
 		// We have children. Use the appropriate child as the new root node
 		return children[bestFit];
+	}
+
+	/// <summary>
+	/// Find which child node this object would be most likely to fit in.
+	/// </summary>
+	/// <param name="objBounds">The object's bounds.</param>
+	/// <returns>One of the eight child octants.</returns>
+	public int BestFitChild(Vector3 objBoundsCenter) {
+		return (objBoundsCenter.x <= Center.x ? 0 : 1) + (objBoundsCenter.y >= Center.y ? 0 : 4) + (objBoundsCenter.z <= Center.z ? 0 : 2);
 	}
 
 	/*
@@ -470,7 +479,7 @@ public class BoundsOctreeNode<T> {
 					OctreeObject existingObj = objects[i];
 					// Find which child the object is closest to based on where the
 					// object's center is located in relation to the octree's center
-					bestFitChild = BestFitChild(existingObj.Bounds);
+					bestFitChild = BestFitChild(existingObj.Bounds.center);
 					// Does it fit?
 					if (Encapsulates(children[bestFitChild].bounds, existingObj.Bounds)) {
 						children[bestFitChild].SubAdd(existingObj.Obj, existingObj.Bounds); // Go a level deeper					
@@ -481,7 +490,7 @@ public class BoundsOctreeNode<T> {
 		}
 
 		// Handle the new object we're adding now
-		int bestFit = BestFitChild(objBounds);
+		int bestFit = BestFitChild(objBounds.center);
 		if (Encapsulates(children[bestFit].bounds, objBounds)) {
 			children[bestFit].SubAdd(obj, objBounds);
 		}
@@ -509,7 +518,7 @@ public class BoundsOctreeNode<T> {
 		}
 
 		if (!removed && children != null) {
-			int bestFitChild = BestFitChild(objBounds);
+			int bestFitChild = BestFitChild(objBounds.center);
 			removed = children[bestFitChild].SubRemove(obj, objBounds);
 		}
 
@@ -567,15 +576,6 @@ public class BoundsOctreeNode<T> {
 	/// <returns>True if innerBounds is fully encapsulated by outerBounds.</returns>
 	static bool Encapsulates(Bounds outerBounds, Bounds innerBounds) {
 		return outerBounds.Contains(innerBounds.min) && outerBounds.Contains(innerBounds.max);
-	}
-
-	/// <summary>
-	/// Find which child node this object would be most likely to fit in.
-	/// </summary>
-	/// <param name="objBounds">The object's bounds.</param>
-	/// <returns>One of the eight child octants.</returns>
-	int BestFitChild(Bounds objBounds) {
-		return (objBounds.center.x <= Center.x ? 0 : 1) + (objBounds.center.y >= Center.y ? 0 : 4) + (objBounds.center.z <= Center.z ? 0 : 2);
 	}
 
 	/// <summary>

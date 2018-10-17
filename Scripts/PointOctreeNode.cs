@@ -320,6 +320,15 @@ public class PointOctreeNode<T> {
 		return children[bestFit];
 	}
 
+	/// <summary>
+	/// Find which child node this object would be most likely to fit in.
+	/// </summary>
+	/// <param name="objPos">The object's position.</param>
+	/// <returns>One of the eight child octants.</returns>
+	public int BestFitChild(Vector3 objPos) {
+		return (objPos.x <= Center.x ? 0 : 1) + (objPos.y >= Center.y ? 0 : 4) + (objPos.z <= Center.z ? 0 : 2);
+	}
+
 	/*
 	/// <summary>
 	/// Get the total amount of objects in this node and all its children, grandchildren etc. Useful for debugging.
@@ -487,15 +496,6 @@ public class PointOctreeNode<T> {
 	/// <returns>True if innerBounds is fully encapsulated by outerBounds.</returns>
 	static bool Encapsulates(Bounds outerBounds, Vector3 point) {
 		return outerBounds.Contains(point);
-	}
-
-	/// <summary>
-	/// Find which child node this object would be most likely to fit in.
-	/// </summary>
-	/// <param name="objPos">The object's position.</param>
-	/// <returns>One of the eight child octants.</returns>
-	int BestFitChild(Vector3 objPos) {
-		return (objPos.x <= Center.x ? 0 : 1) + (objPos.y >= Center.y ? 0 : 4) + (objPos.z <= Center.z ? 0 : 2);
 	}
 
 	/// <summary>
