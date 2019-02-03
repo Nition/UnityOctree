@@ -201,23 +201,25 @@ public class PointOctree<T> {
 		// Create a new, bigger octree root node
 		rootNode = new PointOctreeNode<T>(newLength, minSize, newCenter);
 
-		// Create 7 new octree children to go with the old root as children of the new root
-		int rootPos = rootNode.BestFitChild(oldRoot.Center);
-		PointOctreeNode<T>[] children = new PointOctreeNode<T>[8];
-		for (int i = 0; i < 8; i++) {
-			if (i == rootPos) {
-				children[i] = oldRoot;
-			}
-			else {
-				xDirection = i % 2 == 0 ? -1 : 1;
-				yDirection = i > 3 ? -1 : 1;
-				zDirection = (i < 2 || (i > 3 && i < 6)) ? -1 : 1;
-				children[i] = new PointOctreeNode<T>(oldRoot.SideLength, minSize, newCenter + new Vector3(xDirection * half, yDirection * half, zDirection * half));
-			}
-		}
+        if (oldRoot.HasAnyObjects()) {
+            // Create 7 new octree children to go with the old root as children of the new root
+            int rootPos = rootNode.BestFitChild(oldRoot.Center);
+            PointOctreeNode<T>[] children = new PointOctreeNode<T>[8];
+            for (int i = 0; i < 8; i++) {
+                if (i == rootPos) {
+                    children[i] = oldRoot;
+                }
+                else {
+                    xDirection = i % 2 == 0 ? -1 : 1;
+                    yDirection = i > 3 ? -1 : 1;
+                    zDirection = (i < 2 || (i > 3 && i < 6)) ? -1 : 1;
+                    children[i] = new PointOctreeNode<T>(oldRoot.SideLength, minSize, newCenter + new Vector3(xDirection * half, yDirection * half, zDirection * half));
+                }
+            }
 
-		// Attach the new children to the new root node
-		rootNode.SetChildren(children);
+            // Attach the new children to the new root node
+            rootNode.SetChildren(children);
+        }
 	}
 
 	/// <summary>

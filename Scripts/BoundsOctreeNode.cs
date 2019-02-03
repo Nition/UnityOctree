@@ -395,7 +395,23 @@ public class BoundsOctreeNode<T> {
 		return (objBoundsCenter.x <= Center.x ? 0 : 1) + (objBoundsCenter.y >= Center.y ? 0 : 4) + (objBoundsCenter.z <= Center.z ? 0 : 2);
 	}
 
-	/*
+    /// <summary>
+    /// Checks if this node or anything below it has something in it.
+    /// </summary>
+    /// <returns>True if this node or any of its children, grandchildren etc have something in them</returns>
+    public bool HasAnyObjects() {
+        if (objects.Count > 0) return true;
+
+        if (children != null) {
+            for (int i = 0; i < 8; i++) {
+                if (children[i].HasAnyObjects()) return true;
+            }
+        }
+
+        return false;
+    }
+
+    /*
 	/// <summary>
 	/// Get the total amount of objects in this node and all its children, grandchildren etc. Useful for debugging.
 	/// </summary>
@@ -412,16 +428,16 @@ public class BoundsOctreeNode<T> {
 	}
 	*/
 
-	// #### PRIVATE METHODS ####
+    // #### PRIVATE METHODS ####
 
-	/// <summary>
-	/// Set values for this node. 
-	/// </summary>
-	/// <param name="baseLengthVal">Length of this node, not taking looseness into account.</param>
-	/// <param name="minSizeVal">Minimum size of nodes in this octree.</param>
-	/// <param name="loosenessVal">Multiplier for baseLengthVal to get the actual size.</param>
-	/// <param name="centerVal">Centre position of this node.</param>
-	void SetValues(float baseLengthVal, float minSizeVal, float loosenessVal, Vector3 centerVal) {
+    /// <summary>
+    /// Set values for this node. 
+    /// </summary>
+    /// <param name="baseLengthVal">Length of this node, not taking looseness into account.</param>
+    /// <param name="minSizeVal">Minimum size of nodes in this octree.</param>
+    /// <param name="loosenessVal">Multiplier for baseLengthVal to get the actual size.</param>
+    /// <param name="centerVal">Centre position of this node.</param>
+    void SetValues(float baseLengthVal, float minSizeVal, float loosenessVal, Vector3 centerVal) {
 		BaseLength = baseLengthVal;
 		minSize = minSizeVal;
 		looseness = loosenessVal;
@@ -595,21 +611,5 @@ public class BoundsOctreeNode<T> {
 			}
 		}
 		return totalObjects <= NUM_OBJECTS_ALLOWED;
-	}
-
-	/// <summary>
-	/// Checks if this node or anything below it has something in it.
-	/// </summary>
-	/// <returns>True if this node or any of its children, grandchildren etc have something in them</returns>
-	public bool HasAnyObjects() {
-		if (objects.Count > 0) return true;
-
-		if (children != null) {
-			for (int i = 0; i < 8; i++) {
-				if (children[i].HasAnyObjects()) return true;
-			}
-		}
-
-		return false;
 	}
 }
