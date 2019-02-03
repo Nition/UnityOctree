@@ -60,7 +60,7 @@ public class BoundsOctree<T> {
 		initialSize = initialWorldSize;
 		minSize = minNodeSize;
 		looseness = Mathf.Clamp(loosenessVal, 1.0f, 2.0f);
-		rootNode = new BoundsOctreeNode<T>(initialSize, minSize, loosenessVal, initialWorldPos);
+		rootNode = new BoundsOctreeNode<T>(initialSize, minSize, looseness, initialWorldPos);
 	}
 
 	// #### PUBLIC METHODS ####
