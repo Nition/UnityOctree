@@ -2,7 +2,7 @@
 using UnityEngine;
 
 // A node in a BoundsOctree
-// Copyright 2014 Nition, BSD licence (see LICENCE file). http://nition.co
+// Copyright 2014 Nition, BSD licence (see LICENCE file). www.momentstudio.co.nz
 public class BoundsOctreeNode<T> {
 	// Centre of this node
 	public Vector3 Center { get; private set; }
@@ -38,7 +38,7 @@ public class BoundsOctreeNode<T> {
 	const int NUM_OBJECTS_ALLOWED = 8;
 
 	// An object in the octree
-	class OctreeObject {
+	struct OctreeObject {
 		public T Obj;
 		public Bounds Bounds;
 	}
