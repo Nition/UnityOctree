@@ -1,4 +1,4 @@
-Note: This repository is no longer maintained.
+Please note: This repository is no longer maintained.
 
 UnityOctree
 ===========
